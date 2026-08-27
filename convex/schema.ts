@@ -16,6 +16,8 @@ export default defineSchema({
   customers: defineTable({
     name: v.string(),
     phone: v.string(),
+    reminderDays: v.optional(v.number()),
+    createdAt: v.optional(v.number()),
     address: v.optional(v.string()),
     notes: v.optional(v.string()),
     active: v.boolean(),
@@ -42,12 +44,16 @@ export default defineSchema({
 
   sales: defineTable({
     customerId: v.optional(v.id("customers")),
+    customerName: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
     kind: v.union(v.literal("cash"), v.literal("credit")),
     subtotal: v.number(),
     discount: v.number(),
     total: v.number(),
+    paidAmount: v.optional(v.number()),
+    remainingAmount: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_created_at", ["createdAt"]),
+  }).index("by_created_at", ["createdAt"]).index("by_customer", ["customerId"]),
 
   saleItems: defineTable({
     saleId: v.id("sales"),
