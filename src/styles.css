@@ -103,6 +103,7 @@ code { background: #f0f1ed; padding: 4px 7px; border-radius: 7px; color: #52635f
 .customer-main span, .customer-row div small { color: var(--muted); font-size: 11px; }.customer-row div > strong { margin-top: 3px; font-size: 13px; }.debt-value { color: var(--red) !important; }.paid-value { color: #27705e !important; }
 
 .overdue-banner { background: linear-gradient(120deg, #b94742, #d76a59); color: white; border-radius: 18px; padding: 20px 22px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 12px 30px rgba(170,65,57,.17); }
+.overdue-banner.clear { background: linear-gradient(120deg, #276458, #4a8a79); box-shadow: 0 12px 30px rgba(39,100,88,.16); }
 .overdue-banner > div { display: flex; align-items: center; gap: 14px; }.overdue-banner strong { font-size: 17px; }.overdue-banner p { margin: 3px 0 0; opacity: .8; font-size: 12px; }.banner-icon { width: 45px; height: 45px; display: grid; place-items: center; background: rgba(255,255,255,.14); border-radius: 13px; }
 .overdue-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .overdue-card { background: var(--panel); border: 1px solid rgba(185,71,66,.16); border-radius: 17px; padding: 18px; box-shadow: var(--shadow); }
@@ -299,6 +300,11 @@ body { overflow-x: hidden; }
 }
 .mobile-nav button.active { color: var(--green); font-weight: 800; }
 .mobile-nav button.active svg { background: var(--mint); padding: 5px; width: 31px; height: 31px; border-radius: 10px; }
+.empty-state { min-height: 210px; padding: 30px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--muted); grid-column: 1 / -1; }
+.empty-state > span { width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; color: var(--green-2); background: var(--mint); margin-bottom: 12px; }
+.empty-state strong { color: var(--green); font-size: 15px; }
+.empty-state p { margin: 5px 0 0; font-size: 12px; line-height: 1.6; }
+.empty-category { display: block; }
 
 @media (max-width: 360px) {
   .metrics-grid, .metrics-grid.three { grid-template-columns: 1fr; }

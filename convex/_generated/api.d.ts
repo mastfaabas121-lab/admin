@@ -12,7 +12,6 @@ import type * as customers from "../customers.js";
 import type * as debts from "../debts.js";
 import type * as products from "../products.js";
 import type * as sales from "../sales.js";
-import type * as seed from "../seed.js";
 
 import type {
   ApiFromModules,
@@ -25,7 +24,6 @@ declare const fullApi: ApiFromModules<{
   debts: typeof debts;
   products: typeof products;
   sales: typeof sales;
-  seed: typeof seed;
 }>;
 
 /**
