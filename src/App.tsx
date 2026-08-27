@@ -162,6 +162,7 @@ function App() {
 
       <main className="main-content">
         <header className="topbar">
+          <div className="mobile-brand"><WalletCards size={21} /></div>
           <button className="icon-button menu-button" onClick={() => setSidebarOpen(true)} aria-label="فتح القائمة"><Menu /></button>
           <div className="page-heading"><span>لوحة الإدارة / {current.label}</span><h1>{current.label}</h1></div>
           <div className="topbar-actions">
@@ -205,7 +206,7 @@ function InventoryView({ products: visible, query, setQuery }: { products: Produ
     </div>
     <div className="panel">
       <div className="panel-header"><div><h2>قائمة المخزون</h2><p>تابع الكميات والأسعار وحالة كل منتج.</p></div><div className="panel-actions"><SearchBox value={query} onChange={setQuery} placeholder="ابحث عن منتج أو رمز..." /><button className="primary-button"><Plus size={18} /> إضافة منتج</button></div></div>
-      <div className="data-table-wrap"><table className="data-table"><thead><tr><th>المنتج</th><th>التصنيف</th><th>الرمز</th><th>المتوفر</th><th>سعر البيع</th><th>الحالة</th></tr></thead><tbody>{visible.map((product) => <tr key={product.id}><td><div className="product-name"><span className="product-thumb"><ShoppingBasket size={20} /></span><strong>{product.name}</strong></div></td><td>{product.category}</td><td><code>{product.sku}</code></td><td><b>{product.stock}</b> قطعة</td><td><strong>{money(product.price)}</strong></td><td><span className={`status ${product.stock <= 3 ? "danger" : product.stock <= 8 ? "warning" : "success"}`}>{product.stock <= 3 ? "منخفض" : product.stock <= 8 ? "متوسط" : "متوفر"}</span></td></tr>)}</tbody></table></div>
+      <div className="data-table-wrap"><table className="data-table"><thead><tr><th>المنتج</th><th>التصنيف</th><th>الرمز</th><th>المتوفر</th><th>سعر البيع</th><th>الحالة</th></tr></thead><tbody>{visible.map((product) => <tr key={product.id}><td data-label="المنتج"><div className="product-name"><span className="product-thumb"><ShoppingBasket size={20} /></span><strong>{product.name}</strong></div></td><td data-label="التصنيف">{product.category}</td><td data-label="الرمز"><code>{product.sku}</code></td><td data-label="المتوفر"><b>{product.stock}</b> قطعة</td><td data-label="سعر البيع"><strong>{money(product.price)}</strong></td><td data-label="الحالة"><span className={`status ${product.stock <= 3 ? "danger" : product.stock <= 8 ? "warning" : "success"}`}>{product.stock <= 3 ? "منخفض" : product.stock <= 8 ? "متوسط" : "متوفر"}</span></td></tr>)}</tbody></table></div>
     </div>
   </section>;
 }
