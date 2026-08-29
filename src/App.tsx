@@ -47,6 +47,7 @@ const tabs: { id: TabId; label: string; icon: Icon }[] = [
   { id: "stats", label: "الإحصائيات", icon: BarChart3 },
 ];
 
+const GREGORIAN_LOCALE = "ar-IQ-u-ca-gregory";
 const money = (value: number) => `${new Intl.NumberFormat("ar-IQ").format(value)} د.ع`;
 const receiptHeaderUrl = `${import.meta.env.BASE_URL}receipt-header.png`;
 
@@ -79,7 +80,7 @@ function App() {
         reminderDays: (customer as typeof customer & { reminderDays?: number }).reminderDays ?? 30,
         debt: customer.totalDebt ?? 0,
         paid: 0,
-        next: customer.nextDueDate ? new Intl.DateTimeFormat("ar-IQ").format(customer.nextDueDate) : "—",
+        next: customer.nextDueDate ? new Intl.DateTimeFormat(GREGORIAN_LOCALE).format(customer.nextDueDate) : "—",
         status: !customer.active ? "موقوف" : customer.isOverdue ? "متأخر" : (customer.totalDebt ?? 0) > 0 ? "منتظم" : "مكتمل",
       }))
     : [];
@@ -167,7 +168,7 @@ function App() {
           <button className="icon-button menu-button" onClick={() => setSidebarOpen(true)} aria-label="فتح القائمة"><Menu /></button>
           <div className="page-heading"><span>لوحة الإدارة / {current.label}</span><h1>{current.label}</h1></div>
           <div className="topbar-actions">
-            <div className="date-chip"><span>الخميس</span><strong>27 آب 2026</strong></div>
+            <div className="date-chip"><span>{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { weekday: "long" }).format(Date.now())}</span><strong>{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" }).format(Date.now())}</strong></div>
             <button className={`icon-button notification ${notificationOpen ? "active" : ""}`} aria-label={`الإشعارات${overdueRows.length ? `، ${overdueRows.length} متأخر` : ""}`} aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)}><Bell />{overdueRows.length > 0 && <span className="notification-count">{overdueRows.length > 99 ? "99+" : overdueRows.length}</span>}</button>
           </div>
           {notificationOpen && <div className="notification-panel" role="dialog" aria-label="إشعارات المتأخرين">
@@ -397,7 +398,7 @@ type CustomerTransaction = { id: string; kind: "debt" | "payment" | "sale"; titl
 type CustomerAccountData = { customer: { name: string; phone: string }; totalDebt: number; transactions: CustomerTransaction[] };
 
 function TransactionReceipt({ customer, transaction, currentDebt, onClose }: { customer: { name: string; phone: string }; transaction: CustomerTransaction; currentDebt: number; onClose: () => void }) {
-  const dateTimeFormat = new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const dateTimeFormat = new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
   const printedAt = dateTimeFormat.format(Date.now());
   const transactionAt = dateTimeFormat.format(transaction.date);
   const receiptNumber = transaction.id.slice(-8).toUpperCase();
@@ -424,7 +425,7 @@ function TransactionReceipt({ customer, transaction, currentDebt, onClose }: { c
           <div className="receipt-remaining"><span>{transaction.kind === "sale" ? "المتبقي من المعاملة" : "الدين المتبقي حالياً"}</span><strong>{money(remaining)}</strong></div>
           {transaction.kind === "sale" && <div><span>الدين الكلي الحالي</span><strong>{money(currentDebt)}</strong></div>}
         </div>
-        {transaction.dueDate && <div className="receipt-due"><span>تاريخ الاستحقاق</span><strong>{new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric" }).format(transaction.dueDate)}</strong></div>}
+        {transaction.dueDate && <div className="receipt-due"><span>تاريخ الاستحقاق</span><strong>{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" }).format(transaction.dueDate)}</strong></div>}
         <footer className="receipt-footer"><strong>شكراً لتعاملكم معنا</strong><span>التوقيع والختم</span></footer>
       </article>
       <div className="receipt-preview-actions"><button type="button" onClick={onClose}>إلغاء</button><button type="button" className="print-receipt-now" onClick={() => window.print()}><ReceiptText size={18} /> طباعة الوصل</button></div>
@@ -544,7 +545,7 @@ function CustomerAccountView({ customer, products, onBack }: { customer: Custome
         const shareUrl = whatsappTransactionUrl(account.customer.name, account.customer.phone, transaction, account.totalDebt);
         return <article className="transaction-row" key={`${transaction.kind}-${transaction.id}`}>
           <div className={`transaction-icon ${transaction.kind}`} >{transaction.kind === "payment" ? <HandCoins size={20} /> : <ReceiptText size={20} />}</div>
-          <div className="transaction-main"><strong>{transaction.title}</strong><span>{new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "short", day: "numeric" }).format(transaction.date)}</span>{transaction.dueDate && <small>الاستحقاق: {new Intl.DateTimeFormat("ar-IQ").format(transaction.dueDate)}</small>}</div>
+          <div className="transaction-main"><strong>{transaction.title}</strong><span>{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "short", day: "numeric" }).format(transaction.date)}</span>{transaction.dueDate && <small>الاستحقاق: {new Intl.DateTimeFormat(GREGORIAN_LOCALE).format(transaction.dueDate)}</small>}</div>
           <strong className={transaction.kind === "payment" ? "transaction-paid" : "transaction-debt"}>{transaction.kind === "payment" ? "−" : "+"}{money(transaction.amount)}</strong>
           <div className="transaction-receipt-actions">
             <a className={`transaction-share ${shareUrl ? "" : "disabled"}`} href={shareUrl || undefined} target="_blank" rel="noreferrer" aria-disabled={!shareUrl}><MessageCircle size={17} /> مشاركة عبر واتساب</a>
@@ -595,7 +596,7 @@ function whatsappTransactionUrl(
   remainingDebt: number,
 ) {
   const phone = normalizeWhatsappPhone(customerPhone);
-  const dateFormat = new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric" });
+  const dateFormat = new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" });
   const lines = [
     `مرحباً ${customerName}، هذه تفاصيل المعاملة:`,
     `نوع المعاملة: ${transaction.title}`,
@@ -612,7 +613,7 @@ function whatsappTransactionUrl(
 
 function whatsappReminderUrl(account: OverdueAccount) {
   const phone = normalizeWhatsappPhone(account.phone);
-  const dateFormat = new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric" });
+  const dateFormat = new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" });
   const today = dateFormat.format(Date.now());
   const dueDate = dateFormat.format(account.dueDate);
   const message = `مرحباً ${account.name}، نذكّركم بوجود مبلغ متأخر.\nتاريخ اليوم: ${today}\nتاريخ الاستحقاق: ${dueDate}\nمدة التأخير: ${account.overdueDays} يوم\nالمبلغ المتبقي: ${money(account.amount)}\nيرجى التواصل معنا عند التسديد، مع الشكر.`;
@@ -628,7 +629,7 @@ function OverdueView({ accounts }: { accounts: OverdueAccount[] }) {
       return <article className="overdue-card" key={account.id}>
         <div className="overdue-card-top"><span className="sequence-number">{index + 1}</span><div className="avatar">{account.name.charAt(0)}</div><div><h3>{account.name}</h3><span>{account.phone}</span></div><span className="days-late">متأخر {account.overdueDays} يوم</span></div>
         <div className="overdue-amount"><span>المبلغ المتبقي</span><strong>{money(account.amount)}</strong></div>
-        <div className="due-date"><span>تاريخ الاستحقاق</span><b>{new Intl.DateTimeFormat("ar-IQ").format(account.dueDate)}</b></div>
+        <div className="due-date"><span>تاريخ الاستحقاق</span><b>{new Intl.DateTimeFormat(GREGORIAN_LOCALE).format(account.dueDate)}</b></div>
         <div className="card-actions whatsapp-actions">
           <a className={`whatsapp-button ${reminderUrl ? "" : "disabled"}`} href={reminderUrl || undefined} target="_blank" rel="noreferrer" aria-disabled={!reminderUrl}><MessageCircle size={18} /> تذكير عبر واتساب</a>
           <button className="secondary-button">فتح الحساب</button>
@@ -714,14 +715,14 @@ function directSaleWhatsappUrl(sale: DirectSaleRecord) {
     `مرحباً ${sale.customerName || "عميلنا"}، تفاصيل عملية البيع:`,
     ...sale.items.map((item) => `${item.productName}: ${item.quantity} × ${money(item.unitPrice)} = ${money(item.total)}`),
     `المجموع المدفوع: ${money(sale.total)}`,
-    `التاريخ: ${new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric" }).format(sale.createdAt)}`,
+    `التاريخ: ${new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" }).format(sale.createdAt)}`,
     "شكراً لتعاملكم معنا.",
   ];
   return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`;
 }
 
 function DirectSaleReceipt({ sale, onClose }: { sale: DirectSaleRecord; onClose: () => void }) {
-  const dateTimeFormat = new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const dateTimeFormat = new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
   const receiptNumber = sale._id.slice(-8).toUpperCase();
   return <div className="receipt-print-layer" role="dialog" aria-modal="true" aria-labelledby="direct-receipt-title" onMouseDown={onClose}>
     <div className="receipt-dialog" onMouseDown={(event) => event.stopPropagation()}>
@@ -852,7 +853,7 @@ function StatsView({ products }: { products: Product[] }) {
         return <article className="direct-sale-record" key={sale._id}>
           <div className="direct-sale-record-head"><div><strong>{sale.customerName || "مشتري نقدي"}</strong><span>{sale.customerPhone || "لا يوجد رقم واتساب"}</span></div><strong>{money(sale.total)}</strong></div>
           <div className="direct-sale-items">{sale.items.map((item) => <span key={item._id}>{item.productName} × {item.quantity}</span>)}</div>
-          <small className="direct-sale-date">{new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).format(sale.createdAt)}</small>
+          <small className="direct-sale-date">{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).format(sale.createdAt)}</small>
           <div className="direct-sale-actions"><button onClick={() => openSaleEdit(sale)}>تعديل</button><button className="delete-sale-button" onClick={() => void removeSale(sale._id)}>حذف</button><a className={shareUrl ? "" : "disabled"} href={shareUrl || undefined} target="_blank" rel="noreferrer"><MessageCircle size={16} /> مشاركة واتساب</a><button className="direct-print-button" onClick={() => setPrintSale(sale)}><ReceiptText size={16} /> وصل طباعة</button></div>
         </article>;
       })}</div> : <EmptyState icon={BarChart3} title="لا توجد معاملات بيع مباشر" text="ستظهر هنا المعاملات لمدة 30 يوماً بعد إتمام البيع." />}
