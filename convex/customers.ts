@@ -96,8 +96,19 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const customer = await ctx.db.get(args.customerId);
     if (!customer) throw new Error("الزبون غير موجود");
-    const debts = await ctx.db.query("debts").withIndex("by_customer", (q) => q.eq("customerId", args.customerId)).collect();
-    if (debts.some((debt) => debt.remainingAmount > 0)) throw new Error("لا يمكن حذف زبون عليه دين قائم");
-    await ctx.db.patch(args.customerId, { active: false });
+    const [debts, payments, sales] = await Promise.all([
+      ctx.db.query("debts").withIndex("by_customer", (q) => q.eq("customerId", args.customerId)).collect(),
+      ctx.db.query("payments").withIndex("by_customer", (q) => q.eq("customerId", args.customerId)).collect(),
+      ctx.db.query("sales").withIndex("by_customer", (q) => q.eq("customerId", args.customerId)).collect(),
+    ]);
+    const saleItems = (await Promise.all(
+      sales.map((sale) => ctx.db.query("saleItems").withIndex("by_sale", (q) => q.eq("saleId", sale._id)).collect()),
+    )).flat();
+
+    for (const item of saleItems) await ctx.db.delete(item._id);
+    for (const payment of payments) await ctx.db.delete(payment._id);
+    for (const debt of debts) await ctx.db.delete(debt._id);
+    for (const sale of sales) await ctx.db.delete(sale._id);
+    await ctx.db.delete(args.customerId);
   },
 });
