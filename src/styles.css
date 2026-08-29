@@ -332,12 +332,31 @@ body { overflow-x: hidden; }
 
 @media print {
   @page { size: A4 portrait; margin: 10mm; }
-  body { background: white !important; }
+  html, body { width: 100% !important; min-height: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; }
   body * { visibility: hidden !important; }
+  #root, .app-shell, .main-content { width: 100% !important; max-width: none !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; display: block !important; position: static !important; box-shadow: none !important; }
   .receipt-print-layer, .receipt-print-layer * { visibility: visible !important; }
-  .receipt-print-layer { position: absolute; inset: 0; padding: 0; overflow: visible; display: block; background: white !important; backdrop-filter: none; }
-  .receipt-dialog { width: 100%; max-width: none; padding: 0; border-radius: 0; background: white; box-shadow: none; }
-  .receipt-paper { width: 100%; padding: 6mm; border: 1px solid #9ca9a4; border-radius: 0; break-inside: avoid; page-break-inside: avoid; }
+  .receipt-print-layer { position: fixed !important; inset: 0 !important; width: 190mm !important; min-height: 277mm !important; margin: 0 auto !important; padding: 0 !important; overflow: visible !important; display: block !important; background: white !important; backdrop-filter: none !important; }
+  .receipt-dialog { width: 190mm !important; min-height: 277mm !important; max-width: none !important; margin: 0 !important; padding: 0 !important; border-radius: 0 !important; background: white !important; box-shadow: none !important; }
+  .receipt-paper { width: 190mm !important; min-height: 277mm !important; box-sizing: border-box !important; margin: 0 !important; padding: 8mm !important; border: 1px solid #7c8984 !important; border-radius: 0 !important; display: flex !important; flex-direction: column !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+  .receipt-image-header { margin: 0 !important; border-width: 1px !important; border-radius: 2mm !important; }
+  .receipt-image-header img { width: 100% !important; height: auto !important; }
+  .receipt-contact { padding: 3mm 0 !important; font-size: 11pt !important; }
+  .receipt-title-row { margin: 4mm 0 !important; padding: 4mm !important; border-radius: 2mm !important; }
+  .receipt-title-row span { font-size: 18pt !important; }
+  .receipt-title-row small, .receipt-title-row b { font-size: 10pt !important; }
+  .receipt-details div { min-height: 18mm !important; padding: 4mm !important; }
+  .receipt-details dt { font-size: 10pt !important; }
+  .receipt-details dd { margin-top: 2mm !important; font-size: 13pt !important; }
+  .receipt-amounts { margin-top: 4mm !important; gap: 2mm !important; }
+  .receipt-amounts div, .receipt-due { min-height: 15mm !important; padding: 3mm 4mm !important; }
+  .receipt-amounts span, .receipt-due span { font-size: 11pt !important; }
+  .receipt-amounts strong, .receipt-due strong { font-size: 15pt !important; }
+  .direct-receipt-items { margin-top: 4mm !important; }
+  .direct-receipt-table-head, .direct-receipt-table-row { min-height: 11mm !important; padding: 2mm 3mm !important; font-size: 10pt !important; }
+  .receipt-footer { margin-top: auto !important; padding-top: 5mm !important; }
+  .receipt-footer strong { font-size: 13pt !important; }
+  .receipt-footer span { min-width: 45mm !important; padding-top: 10mm !important; font-size: 10pt !important; }
   .receipt-close, .receipt-preview-actions { display: none !important; }
 }
 .transaction-icon.sale { color: #8f650f; background: #f9edca; }
