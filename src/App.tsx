@@ -395,6 +395,45 @@ function CustomersView({ customers: visible, products, query, setQuery }: { cust
 type CustomerTransaction = { id: string; kind: "debt" | "payment" | "sale"; title: string; amount: number; date: number; dueDate?: number; paidAmount?: number; remainingAmount?: number };
 type CustomerAccountData = { customer: { name: string; phone: string }; totalDebt: number; transactions: CustomerTransaction[] };
 
+function TransactionReceipt({ customer, transaction, currentDebt, onClose }: { customer: { name: string; phone: string }; transaction: CustomerTransaction; currentDebt: number; onClose: () => void }) {
+  const dateTimeFormat = new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const printedAt = dateTimeFormat.format(Date.now());
+  const transactionAt = dateTimeFormat.format(transaction.date);
+  const receiptNumber = transaction.id.slice(-8).toUpperCase();
+  const paid = transaction.kind === "payment" ? transaction.amount : transaction.paidAmount ?? 0;
+  const remaining = transaction.kind === "sale" ? transaction.remainingAmount ?? 0 : transaction.kind === "payment" ? currentDebt : transaction.remainingAmount ?? currentDebt;
+  const receiptTitle = transaction.kind === "payment" ? "وصل تسديد" : transaction.kind === "sale" ? "وصل بيع" : "وصل دين";
+
+  return <div className="receipt-print-layer" role="dialog" aria-modal="true" aria-labelledby="receipt-title" onMouseDown={onClose}>
+    <div className="receipt-dialog" onMouseDown={(event) => event.stopPropagation()}>
+      <button type="button" className="receipt-close" onClick={onClose} aria-label="إغلاق الوصل"><X size={20} /></button>
+      <article className="receipt-paper">
+        <header className="receipt-business-header">
+          <span className="receipt-logo"><ReceiptText size={26} /></span>
+          <div><strong>جمعية البيت الأبيض للأثاث</strong><small>الديوانية · طريق الديوانية - نجف · التقنية الثانية</small></div>
+        </header>
+        <div className="receipt-contact"><span dir="ltr">0781 324 9709</span><i /><span dir="ltr">0775 888 7900</span></div>
+        <div className="receipt-title-row"><div><span id="receipt-title">{receiptTitle}</span><small>رقم الوصل: {receiptNumber}</small></div><b>{transaction.title}</b></div>
+        <dl className="receipt-details">
+          <div><dt>اسم الزبون</dt><dd>{customer.name}</dd></div>
+          <div><dt>رقم الهاتف</dt><dd dir="ltr">{customer.phone || "—"}</dd></div>
+          <div><dt>تاريخ المعاملة</dt><dd>{transactionAt}</dd></div>
+          <div><dt>تاريخ ووقت الطباعة</dt><dd>{printedAt}</dd></div>
+        </dl>
+        <div className="receipt-amounts">
+          <div><span>{transaction.kind === "payment" ? "مبلغ التسديد" : "مبلغ المعاملة"}</span><strong>{money(transaction.amount)}</strong></div>
+          {(transaction.kind === "payment" || transaction.kind === "sale") && <div className="receipt-paid"><span>المبلغ المسدد</span><strong>{money(paid)}</strong></div>}
+          <div className="receipt-remaining"><span>{transaction.kind === "sale" ? "المتبقي من المعاملة" : "الدين المتبقي حالياً"}</span><strong>{money(remaining)}</strong></div>
+          {transaction.kind === "sale" && <div><span>الدين الكلي الحالي</span><strong>{money(currentDebt)}</strong></div>}
+        </div>
+        {transaction.dueDate && <div className="receipt-due"><span>تاريخ الاستحقاق</span><strong>{new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric" }).format(transaction.dueDate)}</strong></div>}
+        <footer className="receipt-footer"><strong>شكراً لتعاملكم معنا</strong><span>التوقيع والختم</span></footer>
+      </article>
+      <div className="receipt-preview-actions"><button type="button" onClick={onClose}>إلغاء</button><button type="button" className="print-receipt-now" onClick={() => window.print()}><ReceiptText size={18} /> طباعة الوصل</button></div>
+    </div>
+  </div>;
+}
+
 function CustomerAccountView({ customer, products, onBack }: { customer: Customer; products: Product[]; onBack: () => void }) {
   const convex = useConvex();
   const createCustomerSale = useMutation(api.sales.createCustomerSale);
@@ -407,6 +446,7 @@ function CustomerAccountView({ customer, products, onBack }: { customer: Custome
   const [paidAmount, setPaidAmount] = useState("");
   const [actionError, setActionError] = useState("");
   const [savingAction, setSavingAction] = useState(false);
+  const [printTransaction, setPrintTransaction] = useState<CustomerTransaction | null>(null);
   const saleProducts = saleSearch.trim()
     ? products.filter((product) => product.name.includes(saleSearch.trim()) && !saleCart[product.id]).slice(0, 8)
     : [];
@@ -508,7 +548,10 @@ function CustomerAccountView({ customer, products, onBack }: { customer: Custome
           <div className={`transaction-icon ${transaction.kind}`} >{transaction.kind === "payment" ? <HandCoins size={20} /> : <ReceiptText size={20} />}</div>
           <div className="transaction-main"><strong>{transaction.title}</strong><span>{new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "short", day: "numeric" }).format(transaction.date)}</span>{transaction.dueDate && <small>الاستحقاق: {new Intl.DateTimeFormat("ar-IQ").format(transaction.dueDate)}</small>}</div>
           <strong className={transaction.kind === "payment" ? "transaction-paid" : "transaction-debt"}>{transaction.kind === "payment" ? "−" : "+"}{money(transaction.amount)}</strong>
-          <a className={`transaction-share ${shareUrl ? "" : "disabled"}`} href={shareUrl || undefined} target="_blank" rel="noreferrer" aria-disabled={!shareUrl}><MessageCircle size={17} /> مشاركة عبر واتساب</a>
+          <div className="transaction-receipt-actions">
+            <a className={`transaction-share ${shareUrl ? "" : "disabled"}`} href={shareUrl || undefined} target="_blank" rel="noreferrer" aria-disabled={!shareUrl}><MessageCircle size={17} /> مشاركة عبر واتساب</a>
+            <button type="button" className="transaction-print-button" onClick={() => setPrintTransaction(transaction)}><ReceiptText size={17} /> وصل طباعة</button>
+          </div>
         </article>;
       })}</div> : <EmptyState icon={ReceiptText} title="لا توجد معاملات" text="ستظهر هنا عمليات البيع والتسديد الخاصة بهذا الزبون." />}
     </div>
@@ -535,6 +578,7 @@ function CustomerAccountView({ customer, products, onBack }: { customer: Custome
         <button className="save-product-button" type="submit" disabled={savingAction || (action === "sale" && !saleLines.length)}>{savingAction ? "جارٍ الحفظ..." : action === "sale" ? "تم" : "حفظ التسديد"}</button>
       </form>
     </div>}
+    {printTransaction && <TransactionReceipt customer={account.customer} transaction={printTransaction} currentDebt={account.totalDebt} onClose={() => setPrintTransaction(null)} />}
   </section>;
 }
 
@@ -678,6 +722,41 @@ function directSaleWhatsappUrl(sale: DirectSaleRecord) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`;
 }
 
+function DirectSaleReceipt({ sale, onClose }: { sale: DirectSaleRecord; onClose: () => void }) {
+  const dateTimeFormat = new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const receiptNumber = sale._id.slice(-8).toUpperCase();
+  return <div className="receipt-print-layer" role="dialog" aria-modal="true" aria-labelledby="direct-receipt-title" onMouseDown={onClose}>
+    <div className="receipt-dialog" onMouseDown={(event) => event.stopPropagation()}>
+      <button type="button" className="receipt-close" onClick={onClose} aria-label="إغلاق الوصل"><X size={20} /></button>
+      <article className="receipt-paper direct-receipt-paper">
+        <header className="receipt-business-header">
+          <span className="receipt-logo"><ReceiptText size={26} /></span>
+          <div><strong>جمعية البيت الأبيض للأثاث</strong><small>الديوانية · طريق الديوانية - نجف · التقنية الثانية</small></div>
+        </header>
+        <div className="receipt-contact"><span dir="ltr">0781 324 9709</span><i /><span dir="ltr">0775 888 7900</span></div>
+        <div className="receipt-title-row"><div><span id="direct-receipt-title">وصل بيع مباشر</span><small>رقم الوصل: {receiptNumber}</small></div><b>مدفوع بالكامل</b></div>
+        <dl className="receipt-details">
+          <div><dt>اسم المشتري</dt><dd>{sale.customerName || "مشتري نقدي"}</dd></div>
+          <div><dt>رقم الهاتف</dt><dd dir="ltr">{sale.customerPhone || "—"}</dd></div>
+          <div><dt>تاريخ البيع</dt><dd>{dateTimeFormat.format(sale.createdAt)}</dd></div>
+          <div><dt>تاريخ ووقت الطباعة</dt><dd>{dateTimeFormat.format(Date.now())}</dd></div>
+        </dl>
+        <div className="direct-receipt-items">
+          <div className="direct-receipt-table-head"><span>المادة</span><span>العدد</span><span>السعر</span><span>المجموع</span></div>
+          {sale.items.map((item) => <div className="direct-receipt-table-row" key={item._id}><strong>{item.productName}</strong><span>{item.quantity}</span><span>{money(item.unitPrice)}</span><b>{money(item.total)}</b></div>)}
+        </div>
+        <div className="receipt-amounts">
+          <div><span>المبلغ الكلي</span><strong>{money(sale.total)}</strong></div>
+          <div className="receipt-paid"><span>المبلغ المدفوع</span><strong>{money(sale.total)}</strong></div>
+          <div className="receipt-remaining"><span>المتبقي</span><strong>{money(0)}</strong></div>
+        </div>
+        <footer className="receipt-footer"><strong>شكراً لتعاملكم معنا</strong><span>التوقيع والختم</span></footer>
+      </article>
+      <div className="receipt-preview-actions"><button type="button" onClick={onClose}>إلغاء</button><button type="button" className="print-receipt-now" onClick={() => window.print()}><ReceiptText size={18} /> طباعة الوصل</button></div>
+    </div>
+  </div>;
+}
+
 function StatsView({ products }: { products: Product[] }) {
   const convex = useConvex();
   const updateDirectSale = useMutation(api.sales.updateDirectSale);
@@ -690,6 +769,7 @@ function StatsView({ products }: { products: Product[] }) {
   const [editPhone, setEditPhone] = useState("");
   const [statsError, setStatsError] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [printSale, setPrintSale] = useState<DirectSaleRecord | null>(null);
   const editLines = products.filter((product) => editCart[product.id]);
   const editTotal = editLines.reduce((sum, product) => sum + product.price * editCart[product.id], 0);
   const editSearchResults = editSearch.trim() ? products.filter((product) => product.name.includes(editSearch.trim()) && !editCart[product.id]).slice(0, 8) : [];
@@ -778,7 +858,7 @@ function StatsView({ products }: { products: Product[] }) {
           <div className="direct-sale-record-head"><div><strong>{sale.customerName || "مشتري نقدي"}</strong><span>{sale.customerPhone || "لا يوجد رقم واتساب"}</span></div><strong>{money(sale.total)}</strong></div>
           <div className="direct-sale-items">{sale.items.map((item) => <span key={item._id}>{item.productName} × {item.quantity}</span>)}</div>
           <small className="direct-sale-date">{new Intl.DateTimeFormat("ar-IQ", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).format(sale.createdAt)}</small>
-          <div className="direct-sale-actions"><button onClick={() => openSaleEdit(sale)}>تعديل</button><button className="delete-sale-button" onClick={() => void removeSale(sale._id)}>حذف</button><a className={shareUrl ? "" : "disabled"} href={shareUrl || undefined} target="_blank" rel="noreferrer"><MessageCircle size={16} /> مشاركة واتساب</a></div>
+          <div className="direct-sale-actions"><button onClick={() => openSaleEdit(sale)}>تعديل</button><button className="delete-sale-button" onClick={() => void removeSale(sale._id)}>حذف</button><a className={shareUrl ? "" : "disabled"} href={shareUrl || undefined} target="_blank" rel="noreferrer"><MessageCircle size={16} /> مشاركة واتساب</a><button className="direct-print-button" onClick={() => setPrintSale(sale)}><ReceiptText size={16} /> وصل طباعة</button></div>
         </article>;
       })}</div> : <EmptyState icon={BarChart3} title="لا توجد معاملات بيع مباشر" text="ستظهر هنا المعاملات لمدة 30 يوماً بعد إتمام البيع." />}
     </div>
@@ -792,6 +872,7 @@ function StatsView({ products }: { products: Product[] }) {
       <label className="form-field"><span>اسم المشتري</span><input value={editName} onChange={(event) => setEditName(event.target.value)} /></label><label className="form-field"><span>رقم الواتساب</span><input dir="ltr" type="tel" value={editPhone} onChange={(event) => setEditPhone(event.target.value)} /></label>
       {statsError && <div className="form-error"><AlertTriangle size={16} />{statsError}</div>}<button className="save-product-button" type="submit" disabled={savingEdit || !editLines.length}>{savingEdit ? "جارٍ الحفظ..." : "حفظ التعديل"}</button>
     </form></div>}
+    {printSale && <DirectSaleReceipt sale={printSale} onClose={() => setPrintSale(null)} />}
   </section>;
 }
 
