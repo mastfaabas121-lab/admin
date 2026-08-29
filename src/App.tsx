@@ -48,6 +48,7 @@ const tabs: { id: TabId; label: string; icon: Icon }[] = [
 ];
 
 const money = (value: number) => `${new Intl.NumberFormat("ar-IQ").format(value)} د.ع`;
+const receiptHeaderUrl = `${import.meta.env.BASE_URL}receipt-header.png`;
 
 function App() {
   const convexProducts = useQuery(api.products.list);
@@ -408,10 +409,7 @@ function TransactionReceipt({ customer, transaction, currentDebt, onClose }: { c
     <div className="receipt-dialog" onMouseDown={(event) => event.stopPropagation()}>
       <button type="button" className="receipt-close" onClick={onClose} aria-label="إغلاق الوصل"><X size={20} /></button>
       <article className="receipt-paper">
-        <header className="receipt-business-header">
-          <span className="receipt-logo"><ReceiptText size={26} /></span>
-          <div><strong>جمعية البيت الأبيض للأثاث</strong><small>الديوانية · طريق الديوانية - نجف · التقنية الثانية</small></div>
-        </header>
+        <header className="receipt-image-header"><img src={receiptHeaderUrl} alt="جمعية البيت الأبيض للأثاث" /></header>
         <div className="receipt-contact"><span dir="ltr">0781 324 9709</span><i /><span dir="ltr">0775 888 7900</span></div>
         <div className="receipt-title-row"><div><span id="receipt-title">{receiptTitle}</span><small>رقم الوصل: {receiptNumber}</small></div><b>{transaction.title}</b></div>
         <dl className="receipt-details">
@@ -729,10 +727,7 @@ function DirectSaleReceipt({ sale, onClose }: { sale: DirectSaleRecord; onClose:
     <div className="receipt-dialog" onMouseDown={(event) => event.stopPropagation()}>
       <button type="button" className="receipt-close" onClick={onClose} aria-label="إغلاق الوصل"><X size={20} /></button>
       <article className="receipt-paper direct-receipt-paper">
-        <header className="receipt-business-header">
-          <span className="receipt-logo"><ReceiptText size={26} /></span>
-          <div><strong>جمعية البيت الأبيض للأثاث</strong><small>الديوانية · طريق الديوانية - نجف · التقنية الثانية</small></div>
-        </header>
+        <header className="receipt-image-header"><img src={receiptHeaderUrl} alt="جمعية البيت الأبيض للأثاث" /></header>
         <div className="receipt-contact"><span dir="ltr">0781 324 9709</span><i /><span dir="ltr">0775 888 7900</span></div>
         <div className="receipt-title-row"><div><span id="direct-receipt-title">وصل بيع مباشر</span><small>رقم الوصل: {receiptNumber}</small></div><b>مدفوع بالكامل</b></div>
         <dl className="receipt-details">
