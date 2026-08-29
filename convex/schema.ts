@@ -46,6 +46,7 @@ export default defineSchema({
     customerId: v.optional(v.id("customers")),
     customerName: v.optional(v.string()),
     customerPhone: v.optional(v.string()),
+    customerAddress: v.optional(v.string()),
     kind: v.union(v.literal("cash"), v.literal("credit")),
     subtotal: v.number(),
     discount: v.number(),

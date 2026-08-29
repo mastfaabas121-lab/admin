@@ -6,12 +6,14 @@ export const createCashSale = mutation({
     discount: v.number(),
     customerName: v.string(),
     customerPhone: v.string(),
+    customerAddress: v.string(),
     items: v.array(v.object({ productId: v.id("products"), quantity: v.number() })),
   },
   handler: async (ctx, args) => {
     if (!args.items.length) throw new Error("الفاتورة فارغة");
     if (!args.customerName.trim()) throw new Error("اسم المشتري مطلوب");
     if (args.customerPhone.replace(/\D/g, "").length < 10) throw new Error("رقم الواتساب غير صحيح");
+    if (!args.customerAddress.trim()) throw new Error("عنوان المشتري مطلوب");
     let subtotal = 0;
     const resolved = [];
     for (const item of args.items) {
@@ -22,7 +24,7 @@ export const createCashSale = mutation({
       resolved.push({ product, quantity: item.quantity });
     }
     const total = Math.max(0, subtotal - args.discount);
-    const saleId = await ctx.db.insert("sales", { customerName: args.customerName.trim(), customerPhone: args.customerPhone.trim(), kind: "cash", subtotal, discount: args.discount, total, paidAmount: total, remainingAmount: 0, createdAt: Date.now() });
+    const saleId = await ctx.db.insert("sales", { customerName: args.customerName.trim(), customerPhone: args.customerPhone.trim(), customerAddress: args.customerAddress.trim(), kind: "cash", subtotal, discount: args.discount, total, paidAmount: total, remainingAmount: 0, createdAt: Date.now() });
     for (const { product, quantity } of resolved) {
       await ctx.db.insert("saleItems", { saleId, productId: product._id, productName: product.name, quantity, unitPrice: product.salePrice, total: product.salePrice * quantity });
       await ctx.db.patch(product._id, { stock: product.stock - quantity });
@@ -106,6 +108,7 @@ export const updateDirectSale = mutation({
     saleId: v.id("sales"),
     customerName: v.string(),
     customerPhone: v.string(),
+    customerAddress: v.string(),
     items: v.array(v.object({ productId: v.id("products"), quantity: v.number() })),
   },
   handler: async (ctx, args) => {
@@ -114,6 +117,7 @@ export const updateDirectSale = mutation({
     if (!args.items.length) throw new Error("الفاتورة فارغة");
     if (!args.customerName.trim()) throw new Error("اسم المشتري مطلوب");
     if (args.customerPhone.replace(/\D/g, "").length < 10) throw new Error("رقم الواتساب غير صحيح");
+    if (!args.customerAddress.trim()) throw new Error("عنوان المشتري مطلوب");
 
     const oldItems = await ctx.db.query("saleItems").withIndex("by_sale", (q) => q.eq("saleId", args.saleId)).collect();
     const oldQuantities = new Map(oldItems.map((item) => [item.productId, item.quantity]));
@@ -135,7 +139,7 @@ export const updateDirectSale = mutation({
       await ctx.db.patch(product._id, { stock: product.stock + oldQuantity - newQuantity });
       if (newQuantity > 0) await ctx.db.insert("saleItems", { saleId: sale._id, productId: product._id, productName: product.name, quantity: newQuantity, unitPrice: product.salePrice, total: product.salePrice * newQuantity });
     }
-    await ctx.db.patch(sale._id, { customerName: args.customerName.trim(), customerPhone: args.customerPhone.trim(), subtotal, total: subtotal, paidAmount: subtotal, remainingAmount: 0 });
+    await ctx.db.patch(sale._id, { customerName: args.customerName.trim(), customerPhone: args.customerPhone.trim(), customerAddress: args.customerAddress.trim(), subtotal, total: subtotal, paidAmount: subtotal, remainingAmount: 0 });
     return sale._id;
   },
 });

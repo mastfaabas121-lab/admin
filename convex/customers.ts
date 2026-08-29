@@ -65,27 +65,29 @@ export const account = query({
 });
 
 export const create = mutation({
-  args: { name: v.string(), phone: v.string(), reminderDays: v.number(), address: v.optional(v.string()), notes: v.optional(v.string()) },
+  args: { name: v.string(), phone: v.string(), reminderDays: v.number(), address: v.string(), notes: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const existing = await ctx.db.query("customers").withIndex("by_phone", (q) => q.eq("phone", args.phone)).unique();
     if (existing) throw new Error("رقم الواتساب مسجل مسبقاً");
     if (!Number.isInteger(args.reminderDays) || args.reminderDays < 1 || args.reminderDays > 365) {
       throw new Error("عدد أيام التذكير غير صحيح");
     }
-    return ctx.db.insert("customers", { ...args, active: true, createdAt: Date.now() });
+    if (!args.address.trim()) throw new Error("عنوان الزبون مطلوب");
+    return ctx.db.insert("customers", { ...args, name: args.name.trim(), phone: args.phone.trim(), address: args.address.trim(), active: true, createdAt: Date.now() });
   },
 });
 
 export const update = mutation({
-  args: { customerId: v.id("customers"), name: v.string(), phone: v.string(), reminderDays: v.number() },
+  args: { customerId: v.id("customers"), name: v.string(), phone: v.string(), address: v.string(), reminderDays: v.number() },
   handler: async (ctx, args) => {
     const customer = await ctx.db.get(args.customerId);
     if (!customer || !customer.active) throw new Error("الزبون غير موجود");
     const duplicatePhone = await ctx.db.query("customers").withIndex("by_phone", (q) => q.eq("phone", args.phone)).unique();
     if (duplicatePhone && duplicatePhone._id !== args.customerId) throw new Error("رقم الواتساب مسجل مسبقاً");
     if (!args.name.trim()) throw new Error("اسم الزبون مطلوب");
+    if (!args.address.trim()) throw new Error("عنوان الزبون مطلوب");
     if (!Number.isInteger(args.reminderDays) || args.reminderDays < 1 || args.reminderDays > 365) throw new Error("عدد أيام التذكير غير صحيح");
-    await ctx.db.patch(args.customerId, { name: args.name.trim(), phone: args.phone.trim(), reminderDays: args.reminderDays });
+    await ctx.db.patch(args.customerId, { name: args.name.trim(), phone: args.phone.trim(), address: args.address.trim(), reminderDays: args.reminderDays });
   },
 });
 

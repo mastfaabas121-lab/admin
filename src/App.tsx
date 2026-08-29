@@ -14,6 +14,7 @@ import {
   Clock3,
   CreditCard,
   LayoutDashboard,
+  MapPin,
   Menu,
   MessageCircle,
   HandCoins,
@@ -36,7 +37,7 @@ import {
 type TabId = "inventory" | "customers" | "overdue" | "pos" | "stats";
 type Icon = typeof Box;
 type Product = { id: string; name: string; category: string; sku: string; stock: number; price: number; buy: number };
-type Customer = { id: Id<"customers">; name: string; phone: string; reminderDays: number; debt: number; paid: number; next: string; status: string };
+type Customer = { id: Id<"customers">; name: string; phone: string; address: string; reminderDays: number; debt: number; paid: number; next: string; status: string };
 type OverdueAccount = { id: string; name: string; phone: string; amount: number; dueDate: number; overdueDays: number };
 
 const tabs: { id: TabId; label: string; icon: Icon }[] = [
@@ -47,9 +48,20 @@ const tabs: { id: TabId; label: string; icon: Icon }[] = [
   { id: "stats", label: "الإحصائيات", icon: BarChart3 },
 ];
 
-const GREGORIAN_LOCALE = "ar-IQ-u-ca-gregory";
+const ENGLISH_DATE_LOCALE = "en-CA-u-ca-gregory-nu-latn";
 const money = (value: number) => `${new Intl.NumberFormat("ar-IQ").format(value)} د.ع`;
 const receiptHeaderUrl = `${import.meta.env.BASE_URL}receipt-header.png`;
+
+function formatEnglishDate(value: number) {
+  const parts = new Intl.DateTimeFormat(ENGLISH_DATE_LOCALE, { year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function formatEnglishDateTime(value: number) {
+  const time = new Intl.DateTimeFormat("en-GB-u-nu-latn", { hour: "2-digit", minute: "2-digit", hour12: false }).format(value);
+  return `${formatEnglishDate(value)} ${time}`;
+}
 
 function App() {
   const convexProducts = useQuery(api.products.list);
@@ -77,10 +89,11 @@ function App() {
         id: customer._id,
         name: customer.name,
         phone: customer.phone,
+        address: customer.address ?? "",
         reminderDays: (customer as typeof customer & { reminderDays?: number }).reminderDays ?? 30,
         debt: customer.totalDebt ?? 0,
         paid: 0,
-        next: customer.nextDueDate ? new Intl.DateTimeFormat(GREGORIAN_LOCALE).format(customer.nextDueDate) : "—",
+        next: customer.nextDueDate ? formatEnglishDate(customer.nextDueDate) : "—",
         status: !customer.active ? "موقوف" : customer.isOverdue ? "متأخر" : (customer.totalDebt ?? 0) > 0 ? "منتظم" : "مكتمل",
       }))
     : [];
@@ -100,7 +113,7 @@ function App() {
     `${product.name} ${product.category} ${product.sku}`.includes(query.trim()),
   );
   const filteredCustomers = customerRows.filter((customer) =>
-    `${customer.name} ${customer.phone}`.includes(query.trim()),
+    `${customer.name} ${customer.phone} ${customer.address}`.includes(query.trim()),
   );
   const cartLines = productRows.filter((product) => cart[product.id]);
   const cartTotal = useMemo(
@@ -168,7 +181,7 @@ function App() {
           <button className="icon-button menu-button" onClick={() => setSidebarOpen(true)} aria-label="فتح القائمة"><Menu /></button>
           <div className="page-heading"><span>لوحة الإدارة / {current.label}</span><h1>{current.label}</h1></div>
           <div className="topbar-actions">
-            <div className="date-chip"><span>{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { weekday: "long" }).format(Date.now())}</span><strong>{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" }).format(Date.now())}</strong></div>
+            <div className="date-chip"><span>تاريخ اليوم</span><strong dir="ltr">{formatEnglishDate(Date.now())}</strong></div>
             <button className={`icon-button notification ${notificationOpen ? "active" : ""}`} aria-label={`الإشعارات${overdueRows.length ? `، ${overdueRows.length} متأخر` : ""}`} aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)}><Bell />{overdueRows.length > 0 && <span className="notification-count">{overdueRows.length > 99 ? "99+" : overdueRows.length}</span>}</button>
           </div>
           {notificationOpen && <div className="notification-panel" role="dialog" aria-label="إشعارات المتأخرين">
@@ -306,7 +319,7 @@ function CustomersView({ customers: visible, products, query, setQuery }: { cust
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
   const [deleteCustomerError, setDeleteCustomerError] = useState("");
-  const [form, setForm] = useState({ name: "", phone: "", reminderDays: "30" });
+  const [form, setForm] = useState({ name: "", phone: "", address: "", reminderDays: "30" });
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -319,14 +332,14 @@ function CustomersView({ customers: visible, products, query, setQuery }: { cust
 
   const openAddCustomer = () => {
     setEditingCustomer(null);
-    setForm({ name: "", phone: "", reminderDays: "30" });
+    setForm({ name: "", phone: "", address: "", reminderDays: "30" });
     setFormError("");
     setFormOpen(true);
   };
 
   const openEditCustomer = (customer: Customer) => {
     setEditingCustomer(customer);
-    setForm({ name: customer.name, phone: customer.phone, reminderDays: String(customer.reminderDays) });
+    setForm({ name: customer.name, phone: customer.phone, address: customer.address, reminderDays: String(customer.reminderDays) });
     setFormError("");
     setFormOpen(true);
   };
@@ -335,23 +348,25 @@ function CustomersView({ customers: visible, products, query, setQuery }: { cust
     event.preventDefault();
     const name = form.name.trim();
     const phone = form.phone.trim();
+    const address = form.address.trim();
     const phoneDigits = phone.replace(/\D/g, "");
     const reminderDays = Number(form.reminderDays);
 
     if (!name) return setFormError("اكتب اسم الزبون.");
     if (phoneDigits.length < 10 || phoneDigits.length > 15) return setFormError("اكتب رقم واتساب صحيحاً.");
+    if (!address) return setFormError("اكتب عنوان الزبون.");
     if (!Number.isInteger(reminderDays) || reminderDays < 1 || reminderDays > 365) return setFormError("عدد أيام التذكير يجب أن يكون بين 1 و365 يوماً.");
 
     setSaving(true);
     setFormError("");
     try {
       if (editingCustomer) {
-        await updateCustomer({ customerId: editingCustomer.id, name, phone, reminderDays });
+        await updateCustomer({ customerId: editingCustomer.id, name, phone, address, reminderDays });
       } else {
-        const customerId = await createCustomer({ name, phone, reminderDays });
-        setSelectedCustomer({ id: customerId, name, phone, reminderDays, debt: 0, paid: 0, next: "—", status: "مكتمل" });
+        const customerId = await createCustomer({ name, phone, address, reminderDays });
+        setSelectedCustomer({ id: customerId, name, phone, address, reminderDays, debt: 0, paid: 0, next: "—", status: "مكتمل" });
       }
-      setForm({ name: "", phone: "", reminderDays: "30" });
+      setForm({ name: "", phone: "", address: "", reminderDays: "30" });
       setFormOpen(false);
       setEditingCustomer(null);
     } catch (error) {
@@ -376,14 +391,15 @@ function CustomersView({ customers: visible, products, query, setQuery }: { cust
     </div>
     <div className="panel">
       <div className="panel-header"><div><h2>سجل الزبائن</h2><p>تفاصيل الحساب والأقساط القادمة.</p></div><div className="panel-actions"><SearchBox value={query} onChange={setQuery} placeholder="اسم الزبون أو رقم الواتساب..." /><button className="primary-button" onClick={openAddCustomer}><UserPlus size={18} /> زبون جديد</button></div></div>
-      <div className="customer-list">{visible.length ? visible.map((customer, index) => <article className="customer-row customer-card-clickable" role="button" tabIndex={0} key={customer.id} onClick={() => setSelectedCustomer(customer)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setSelectedCustomer(customer); }}><div className={`avatar avatar-${index % 4}`}>{customer.name.charAt(0)}</div><div className="customer-main"><strong>{customer.name}</strong><span>{customer.phone}</span><small className="reminder-cycle"><Clock3 size={14} /> تذكير بعد {customer.reminderDays} يوم</small></div><div><small>المبلغ المتبقي</small><strong className={customer.debt ? "debt-value" : "paid-value"}>{customer.debt ? money(customer.debt) : "لا يوجد دين"}</strong></div><div><small>القسط القادم</small><strong>{customer.next}</strong></div><span className={`status ${customer.status === "متأخر" ? "danger" : customer.status === "مكتمل" ? "success" : "info"}`}>{customer.status}</span><div className="customer-row-actions"><button type="button" className="icon-edit-button" onClick={(event) => { event.stopPropagation(); openEditCustomer(customer); }} aria-label={`تعديل ${customer.name}`}><Pencil size={16} /></button><button type="button" className="icon-delete-button" onClick={(event) => { event.stopPropagation(); setDeleteCustomerError(""); setDeletingCustomer(customer); }} aria-label={`حذف ${customer.name}`}><Trash2 size={16} /></button></div><button className="ghost-button" onClick={(event) => { event.stopPropagation(); setSelectedCustomer(customer); }}>فتح الحساب <ChevronLeft size={16} /></button></article>) : <EmptyState icon={Users} title="لا يوجد زبائن" text="أضف أول زبون لفتح حساب جديد." />}</div>
+      <div className="customer-list">{visible.length ? visible.map((customer, index) => <article className="customer-row customer-card-clickable" role="button" tabIndex={0} key={customer.id} onClick={() => setSelectedCustomer(customer)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setSelectedCustomer(customer); }}><div className={`avatar avatar-${index % 4}`}>{customer.name.charAt(0)}</div><div className="customer-main"><strong>{customer.name}</strong><span>{customer.phone}</span><small className="customer-address"><MapPin size={13} />{customer.address || "لم يضاف عنوان"}</small><small className="reminder-cycle"><Clock3 size={14} /> تذكير بعد {customer.reminderDays} يوم</small></div><div><small>المبلغ المتبقي</small><strong className={customer.debt ? "debt-value" : "paid-value"}>{customer.debt ? money(customer.debt) : "لا يوجد دين"}</strong></div><div><small>القسط القادم</small><strong>{customer.next}</strong></div><span className={`status ${customer.status === "متأخر" ? "danger" : customer.status === "مكتمل" ? "success" : "info"}`}>{customer.status}</span><div className="customer-row-actions"><button type="button" className="icon-edit-button" onClick={(event) => { event.stopPropagation(); openEditCustomer(customer); }} aria-label={`تعديل ${customer.name}`}><Pencil size={16} /></button><button type="button" className="icon-delete-button" onClick={(event) => { event.stopPropagation(); setDeleteCustomerError(""); setDeletingCustomer(customer); }} aria-label={`حذف ${customer.name}`}><Trash2 size={16} /></button></div><button className="ghost-button" onClick={(event) => { event.stopPropagation(); setSelectedCustomer(customer); }}>فتح الحساب <ChevronLeft size={16} /></button></article>) : <EmptyState icon={Users} title="لا يوجد زبائن" text="أضف أول زبون لفتح حساب جديد." />}</div>
     </div>
     {formOpen && <div className="sheet-backdrop" onMouseDown={closeForm}>
       <form className="bottom-sheet customer-sheet" role="dialog" aria-modal="true" aria-labelledby="customer-form-title" onMouseDown={(event) => event.stopPropagation()} onSubmit={submitCustomer}>
         <div className="sheet-handle" />
-        <div className="sheet-header"><div><h2 id="customer-form-title">{editingCustomer ? "تعديل الزبون" : "إضافة زبون جديد"}</h2><p>{editingCustomer ? "عدّل بيانات الزبون ثم احفظ." : "سجّل الاسم ورقم الواتساب للتواصل والتذكير."}</p></div><button type="button" className="sheet-close" onClick={closeForm} aria-label="إغلاق"><X size={20} /></button></div>
+        <div className="sheet-header"><div><h2 id="customer-form-title">{editingCustomer ? "تعديل الزبون" : "إضافة زبون جديد"}</h2><p>{editingCustomer ? "عدّل بيانات الزبون ثم احفظ." : "سجّل الاسم ورقم الواتساب والعنوان."}</p></div><button type="button" className="sheet-close" onClick={closeForm} aria-label="إغلاق"><X size={20} /></button></div>
         <label className="form-field"><span>اسم الزبون</span><input autoFocus value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="أدخل الاسم" /></label>
         <label className="form-field"><span>رقم الواتساب</span><input inputMode="tel" type="tel" dir="ltr" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="07XX XXX XXXX" /></label>
+        <label className="form-field"><span>العنوان</span><input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="المدينة، المنطقة، أقرب نقطة دالة" /></label>
         <label className="form-field"><span>التذكير بعد عدد أيام</span><div className="days-input"><input inputMode="numeric" type="number" min="1" max="365" step="1" value={form.reminderDays} onChange={(event) => setForm({ ...form, reminderDays: event.target.value })} /><b>يوم</b></div></label>
         <div className="phone-hint"><MessageCircle size={15} /><span>سيُستخدم الرقم لإرسال تذكيرات الأقساط عبر واتساب.</span></div>
         {formError && <div className="form-error"><AlertTriangle size={16} />{formError}</div>}
@@ -395,12 +411,11 @@ function CustomersView({ customers: visible, products, query, setQuery }: { cust
 }
 
 type CustomerTransaction = { id: string; kind: "debt" | "payment" | "sale"; title: string; amount: number; date: number; dueDate?: number; paidAmount?: number; remainingAmount?: number };
-type CustomerAccountData = { customer: { name: string; phone: string }; totalDebt: number; transactions: CustomerTransaction[] };
+type CustomerAccountData = { customer: { name: string; phone: string; address?: string }; totalDebt: number; transactions: CustomerTransaction[] };
 
-function TransactionReceipt({ customer, transaction, currentDebt, onClose }: { customer: { name: string; phone: string }; transaction: CustomerTransaction; currentDebt: number; onClose: () => void }) {
-  const dateTimeFormat = new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
-  const printedAt = dateTimeFormat.format(Date.now());
-  const transactionAt = dateTimeFormat.format(transaction.date);
+function TransactionReceipt({ customer, transaction, currentDebt, onClose }: { customer: { name: string; phone: string; address?: string }; transaction: CustomerTransaction; currentDebt: number; onClose: () => void }) {
+  const printedAt = formatEnglishDateTime(Date.now());
+  const transactionAt = formatEnglishDateTime(transaction.date);
   const receiptNumber = transaction.id.slice(-8).toUpperCase();
   const paid = transaction.kind === "payment" ? transaction.amount : transaction.paidAmount ?? 0;
   const remaining = transaction.kind === "sale" ? transaction.remainingAmount ?? 0 : transaction.kind === "payment" ? currentDebt : transaction.remainingAmount ?? currentDebt;
@@ -416,8 +431,9 @@ function TransactionReceipt({ customer, transaction, currentDebt, onClose }: { c
         <dl className="receipt-details">
           <div><dt>اسم الزبون</dt><dd>{customer.name}</dd></div>
           <div><dt>رقم الهاتف</dt><dd dir="ltr">{customer.phone || "—"}</dd></div>
-          <div><dt>تاريخ المعاملة</dt><dd>{transactionAt}</dd></div>
-          <div><dt>تاريخ ووقت الطباعة</dt><dd>{printedAt}</dd></div>
+          <div className="receipt-address-detail"><dt>العنوان</dt><dd>{customer.address || "لم يضاف عنوان"}</dd></div>
+          <div><dt>تاريخ المعاملة</dt><dd dir="ltr">{transactionAt}</dd></div>
+          <div><dt>تاريخ ووقت الطباعة</dt><dd dir="ltr">{printedAt}</dd></div>
         </dl>
         <div className="receipt-amounts">
           <div><span>{transaction.kind === "payment" ? "مبلغ التسديد" : "مبلغ المعاملة"}</span><strong>{money(transaction.amount)}</strong></div>
@@ -425,7 +441,7 @@ function TransactionReceipt({ customer, transaction, currentDebt, onClose }: { c
           <div className="receipt-remaining"><span>{transaction.kind === "sale" ? "المتبقي من المعاملة" : "الدين المتبقي حالياً"}</span><strong>{money(remaining)}</strong></div>
           {transaction.kind === "sale" && <div><span>الدين الكلي الحالي</span><strong>{money(currentDebt)}</strong></div>}
         </div>
-        {transaction.dueDate && <div className="receipt-due"><span>تاريخ الاستحقاق</span><strong>{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" }).format(transaction.dueDate)}</strong></div>}
+        {transaction.dueDate && <div className="receipt-due"><span>تاريخ الاستحقاق</span><strong dir="ltr">{formatEnglishDate(transaction.dueDate)}</strong></div>}
         <footer className="receipt-footer"><strong>شكراً لتعاملكم معنا</strong><span>التوقيع والختم</span></footer>
       </article>
       <div className="receipt-preview-actions"><button type="button" onClick={onClose}>إلغاء</button><button type="button" className="print-receipt-now" onClick={() => window.print()}><ReceiptText size={18} /> طباعة الوصل</button></div>
@@ -531,7 +547,7 @@ function CustomerAccountView({ customer, products, onBack }: { customer: Custome
   return <section className="view-stack customer-account-view">
     <button className="account-back" onClick={onBack}><ArrowRight size={19} /> رجوع إلى الزبائن</button>
     <article className="account-profile-card">
-      <div className="account-profile-top"><div className="avatar account-avatar">{account.customer.name.charAt(0)}</div><div><h2>{account.customer.name}</h2><span>{account.customer.phone}</span></div></div>
+      <div className="account-profile-top"><div className="avatar account-avatar">{account.customer.name.charAt(0)}</div><div><div className="account-name-address"><h2>{account.customer.name}</h2><small><MapPin size={13} />{account.customer.address || "لم يضاف عنوان"}</small></div><span>{account.customer.phone}</span></div></div>
       <div className="account-debt-summary"><span>الدين الكلي</span><strong>{money(account.totalDebt)}</strong><small>{account.totalDebt > 0 ? "المبلغ المتبقي في الحساب" : "لا يوجد دين على الزبون"}</small></div>
       <div className="account-main-actions">
         <button className="payment-action" disabled={account.totalDebt <= 0} onClick={() => setAction("payment")}><HandCoins size={20} /><span>تسديد</span></button>
@@ -545,7 +561,7 @@ function CustomerAccountView({ customer, products, onBack }: { customer: Custome
         const shareUrl = whatsappTransactionUrl(account.customer.name, account.customer.phone, transaction, account.totalDebt);
         return <article className="transaction-row" key={`${transaction.kind}-${transaction.id}`}>
           <div className={`transaction-icon ${transaction.kind}`} >{transaction.kind === "payment" ? <HandCoins size={20} /> : <ReceiptText size={20} />}</div>
-          <div className="transaction-main"><strong>{transaction.title}</strong><span>{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "short", day: "numeric" }).format(transaction.date)}</span>{transaction.dueDate && <small>الاستحقاق: {new Intl.DateTimeFormat(GREGORIAN_LOCALE).format(transaction.dueDate)}</small>}</div>
+          <div className="transaction-main"><strong>{transaction.title}</strong><span dir="ltr">{formatEnglishDate(transaction.date)}</span>{transaction.dueDate && <small>الاستحقاق: <b dir="ltr">{formatEnglishDate(transaction.dueDate)}</b></small>}</div>
           <strong className={transaction.kind === "payment" ? "transaction-paid" : "transaction-debt"}>{transaction.kind === "payment" ? "−" : "+"}{money(transaction.amount)}</strong>
           <div className="transaction-receipt-actions">
             <a className={`transaction-share ${shareUrl ? "" : "disabled"}`} href={shareUrl || undefined} target="_blank" rel="noreferrer" aria-disabled={!shareUrl}><MessageCircle size={17} /> مشاركة عبر واتساب</a>
@@ -596,14 +612,13 @@ function whatsappTransactionUrl(
   remainingDebt: number,
 ) {
   const phone = normalizeWhatsappPhone(customerPhone);
-  const dateFormat = new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" });
   const lines = [
     `مرحباً ${customerName}، هذه تفاصيل المعاملة:`,
     `نوع المعاملة: ${transaction.title}`,
-    `التاريخ: ${dateFormat.format(transaction.date)}`,
+    `التاريخ: ${formatEnglishDate(transaction.date)}`,
     `المبلغ: ${money(transaction.amount)}`,
   ];
-  if (transaction.dueDate) lines.push(`تاريخ الاستحقاق: ${dateFormat.format(transaction.dueDate)}`);
+  if (transaction.dueDate) lines.push(`تاريخ الاستحقاق: ${formatEnglishDate(transaction.dueDate)}`);
   if (transaction.kind === "sale") {
     lines.push(`المدفوع: ${money(transaction.paidAmount ?? 0)}`, `المتبقي من البيع: ${money(transaction.remainingAmount ?? 0)}`);
   }
@@ -613,9 +628,8 @@ function whatsappTransactionUrl(
 
 function whatsappReminderUrl(account: OverdueAccount) {
   const phone = normalizeWhatsappPhone(account.phone);
-  const dateFormat = new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" });
-  const today = dateFormat.format(Date.now());
-  const dueDate = dateFormat.format(account.dueDate);
+  const today = formatEnglishDate(Date.now());
+  const dueDate = formatEnglishDate(account.dueDate);
   const message = `مرحباً ${account.name}، نذكّركم بوجود مبلغ متأخر.\nتاريخ اليوم: ${today}\nتاريخ الاستحقاق: ${dueDate}\nمدة التأخير: ${account.overdueDays} يوم\nالمبلغ المتبقي: ${money(account.amount)}\nيرجى التواصل معنا عند التسديد، مع الشكر.`;
   return phone ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : "";
 }
@@ -629,7 +643,7 @@ function OverdueView({ accounts }: { accounts: OverdueAccount[] }) {
       return <article className="overdue-card" key={account.id}>
         <div className="overdue-card-top"><span className="sequence-number">{index + 1}</span><div className="avatar">{account.name.charAt(0)}</div><div><h3>{account.name}</h3><span>{account.phone}</span></div><span className="days-late">متأخر {account.overdueDays} يوم</span></div>
         <div className="overdue-amount"><span>المبلغ المتبقي</span><strong>{money(account.amount)}</strong></div>
-        <div className="due-date"><span>تاريخ الاستحقاق</span><b>{new Intl.DateTimeFormat(GREGORIAN_LOCALE).format(account.dueDate)}</b></div>
+        <div className="due-date"><span>تاريخ الاستحقاق</span><b dir="ltr">{formatEnglishDate(account.dueDate)}</b></div>
         <div className="card-actions whatsapp-actions">
           <a className={`whatsapp-button ${reminderUrl ? "" : "disabled"}`} href={reminderUrl || undefined} target="_blank" rel="noreferrer" aria-disabled={!reminderUrl}><MessageCircle size={18} /> تذكير عبر واتساب</a>
           <button className="secondary-button">فتح الحساب</button>
@@ -644,6 +658,7 @@ function PosView({ productsData, cart, cartLines, total, query, setQuery, change
   const createCashSale = useMutation(api.sales.createCashSale);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
   const [saleError, setSaleError] = useState("");
   const [savingSale, setSavingSale] = useState(false);
   const searchResults = query.trim() ? productsData.filter((product) => product.name.includes(query.trim()) && !cart[product.id]).slice(0, 8) : [];
@@ -660,16 +675,19 @@ function PosView({ productsData, cart, cartLines, total, query, setQuery, change
     event.preventDefault();
     const name = customerName.trim();
     const phone = customerPhone.trim();
+    const address = customerAddress.trim();
     if (!cartLines.length) return setSaleError("أضف مادة واحدة على الأقل.");
     if (!name) return setSaleError("اكتب اسم المشتري.");
     if (phone.replace(/\D/g, "").length < 10) return setSaleError("اكتب رقم واتساب صحيحاً.");
+    if (!address) return setSaleError("اكتب عنوان المشتري.");
     setSavingSale(true);
     setSaleError("");
     try {
-      await createCashSale({ discount: 0, customerName: name, customerPhone: phone, items: cartLines.map((product) => ({ productId: product.id as Id<"products">, quantity: cart[product.id] })) });
+      await createCashSale({ discount: 0, customerName: name, customerPhone: phone, customerAddress: address, items: cartLines.map((product) => ({ productId: product.id as Id<"products">, quantity: cart[product.id] })) });
       clearCart();
       setCustomerName("");
       setCustomerPhone("");
+      setCustomerAddress("");
       setQuery("");
     } catch {
       setSaleError("تعذر حفظ عملية البيع. وظائف Convex الجديدة تحتاج إلى النشر أولاً.");
@@ -692,6 +710,7 @@ function PosView({ productsData, cart, cartLines, total, query, setQuery, change
       <div className="direct-buyer-fields">
         <label className="form-field"><span>اسم المشتري</span><input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="أدخل الاسم" /></label>
         <label className="form-field"><span>رقم الواتساب</span><input type="tel" inputMode="tel" dir="ltr" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="07XX XXX XXXX" /></label>
+        <label className="form-field direct-buyer-address"><span>العنوان</span><input value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} placeholder="المدينة، المنطقة، أقرب نقطة دالة" /></label>
       </div>
       {saleError && <div className="form-error"><AlertTriangle size={16} />{saleError}</div>}
       <button className="complete-direct-sale" type="submit" disabled={savingSale || !cartLines.length}><CheckCircle2 size={20} />{savingSale ? "جارٍ الحفظ..." : "تم البيع"}</button>
@@ -703,6 +722,7 @@ type DirectSaleRecord = {
   _id: Id<"sales">;
   customerName?: string;
   customerPhone?: string;
+  customerAddress?: string;
   total: number;
   createdAt: number;
   items: Array<{ _id: string; productId: Id<"products">; productName: string; quantity: number; unitPrice: number; total: number }>;
@@ -715,14 +735,14 @@ function directSaleWhatsappUrl(sale: DirectSaleRecord) {
     `مرحباً ${sale.customerName || "عميلنا"}، تفاصيل عملية البيع:`,
     ...sale.items.map((item) => `${item.productName}: ${item.quantity} × ${money(item.unitPrice)} = ${money(item.total)}`),
     `المجموع المدفوع: ${money(sale.total)}`,
-    `التاريخ: ${new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric" }).format(sale.createdAt)}`,
+    `العنوان: ${sale.customerAddress || "غير مضاف"}`,
+    `التاريخ: ${formatEnglishDate(sale.createdAt)}`,
     "شكراً لتعاملكم معنا.",
   ];
   return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`;
 }
 
 function DirectSaleReceipt({ sale, onClose }: { sale: DirectSaleRecord; onClose: () => void }) {
-  const dateTimeFormat = new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
   const receiptNumber = sale._id.slice(-8).toUpperCase();
   return <div className="receipt-print-layer" role="dialog" aria-modal="true" aria-labelledby="direct-receipt-title" onMouseDown={onClose}>
     <div className="receipt-dialog" onMouseDown={(event) => event.stopPropagation()}>
@@ -734,8 +754,9 @@ function DirectSaleReceipt({ sale, onClose }: { sale: DirectSaleRecord; onClose:
         <dl className="receipt-details">
           <div><dt>اسم المشتري</dt><dd>{sale.customerName || "مشتري نقدي"}</dd></div>
           <div><dt>رقم الهاتف</dt><dd dir="ltr">{sale.customerPhone || "—"}</dd></div>
-          <div><dt>تاريخ البيع</dt><dd>{dateTimeFormat.format(sale.createdAt)}</dd></div>
-          <div><dt>تاريخ ووقت الطباعة</dt><dd>{dateTimeFormat.format(Date.now())}</dd></div>
+          <div className="receipt-address-detail"><dt>العنوان</dt><dd>{sale.customerAddress || "لم يضاف عنوان"}</dd></div>
+          <div><dt>تاريخ البيع</dt><dd dir="ltr">{formatEnglishDateTime(sale.createdAt)}</dd></div>
+          <div><dt>تاريخ ووقت الطباعة</dt><dd dir="ltr">{formatEnglishDateTime(Date.now())}</dd></div>
         </dl>
         <div className="direct-receipt-items">
           <div className="direct-receipt-table-head"><span>المادة</span><span>العدد</span><span>السعر</span><span>المجموع</span></div>
@@ -763,6 +784,7 @@ function StatsView({ products }: { products: Product[] }) {
   const [editSearch, setEditSearch] = useState("");
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
   const [statsError, setStatsError] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [printSale, setPrintSale] = useState<DirectSaleRecord | null>(null);
@@ -786,6 +808,7 @@ function StatsView({ products }: { products: Product[] }) {
     setEditSale(sale);
     setEditName(sale.customerName ?? "");
     setEditPhone(sale.customerPhone ?? "");
+    setEditAddress(sale.customerAddress ?? "");
     setEditCart(Object.fromEntries(sale.items.map((item) => [item.productId, item.quantity])));
     setEditSearch("");
     setStatsError("");
@@ -794,6 +817,7 @@ function StatsView({ products }: { products: Product[] }) {
   const closeSaleEdit = () => {
     if (savingEdit) return;
     setEditSale(null);
+    setEditAddress("");
     setStatsError("");
   };
 
@@ -815,10 +839,11 @@ function StatsView({ products }: { products: Product[] }) {
     if (!editSale || !editLines.length) return setStatsError("يجب أن تحتوي المعاملة على مادة واحدة.");
     if (!editName.trim()) return setStatsError("اكتب اسم المشتري.");
     if (editPhone.replace(/\D/g, "").length < 10) return setStatsError("اكتب رقم واتساب صحيحاً.");
+    if (!editAddress.trim()) return setStatsError("اكتب عنوان المشتري.");
     setSavingEdit(true);
     setStatsError("");
     try {
-      await updateDirectSale({ saleId: editSale._id, customerName: editName.trim(), customerPhone: editPhone.trim(), items: editLines.map((product) => ({ productId: product.id as Id<"products">, quantity: editCart[product.id] })) });
+      await updateDirectSale({ saleId: editSale._id, customerName: editName.trim(), customerPhone: editPhone.trim(), customerAddress: editAddress.trim(), items: editLines.map((product) => ({ productId: product.id as Id<"products">, quantity: editCart[product.id] })) });
       await refreshSales();
       setEditSale(null);
     } catch {
@@ -851,9 +876,9 @@ function StatsView({ products }: { products: Product[] }) {
       {sales.length ? <div className="direct-sales-list">{sales.map((sale) => {
         const shareUrl = directSaleWhatsappUrl(sale);
         return <article className="direct-sale-record" key={sale._id}>
-          <div className="direct-sale-record-head"><div><strong>{sale.customerName || "مشتري نقدي"}</strong><span>{sale.customerPhone || "لا يوجد رقم واتساب"}</span></div><strong>{money(sale.total)}</strong></div>
+          <div className="direct-sale-record-head"><div><strong>{sale.customerName || "مشتري نقدي"}</strong><span>{sale.customerPhone || "لا يوجد رقم واتساب"}</span><small className="direct-sale-address"><MapPin size={13} />{sale.customerAddress || "لم يضاف عنوان"}</small></div><strong>{money(sale.total)}</strong></div>
           <div className="direct-sale-items">{sale.items.map((item) => <span key={item._id}>{item.productName} × {item.quantity}</span>)}</div>
-          <small className="direct-sale-date">{new Intl.DateTimeFormat(GREGORIAN_LOCALE, { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).format(sale.createdAt)}</small>
+          <small className="direct-sale-date" dir="ltr">{formatEnglishDateTime(sale.createdAt)}</small>
           <div className="direct-sale-actions"><button onClick={() => openSaleEdit(sale)}>تعديل</button><button className="delete-sale-button" onClick={() => void removeSale(sale._id)}>حذف</button><a className={shareUrl ? "" : "disabled"} href={shareUrl || undefined} target="_blank" rel="noreferrer"><MessageCircle size={16} /> مشاركة واتساب</a><button className="direct-print-button" onClick={() => setPrintSale(sale)}><ReceiptText size={16} /> وصل طباعة</button></div>
         </article>;
       })}</div> : <EmptyState icon={BarChart3} title="لا توجد معاملات بيع مباشر" text="ستظهر هنا المعاملات لمدة 30 يوماً بعد إتمام البيع." />}
@@ -865,7 +890,7 @@ function StatsView({ products }: { products: Product[] }) {
       {editSearch.trim() && <div className="sale-search-results">{editSearchResults.length ? editSearchResults.map((product) => <button type="button" className="sale-search-result" key={product.id} onClick={() => { setEditCart((current) => ({ ...current, [product.id]: 1 })); setEditSearch(""); }}><div><strong>{product.name}</strong><span>{money(product.price)} · متوفر {product.stock}</span></div><span className="choose-product"><Plus size={16} /> إضافة</span></button>) : <div className="sale-products-empty">لا توجد مادة مطابقة.</div>}</div>}
       <div className="sale-products-list">{editLines.map((product) => { const originalQuantity = editSale.items.find((item) => item.productId === product.id)?.quantity ?? 0; return <article className="sale-product-row selected" key={product.id}><div className="sale-product-info"><strong>{product.name}</strong><span>{money(product.price)} · المتاح {product.stock + originalQuantity}</span></div><div className="sale-quantity"><button type="button" onClick={() => changeEditQuantity(product, -1)}><Minus size={17} /></button><b>{editCart[product.id]}</b><button type="button" disabled={editCart[product.id] >= product.stock + originalQuantity} onClick={() => changeEditQuantity(product, 1)}><Plus size={17} /></button></div></article>; })}</div>
       <div className="sale-summary-box"><div><span>عدد المواد</span><b>{editLines.reduce((sum, product) => sum + editCart[product.id], 0)}</b></div><div><span>السعر الكلي</span><strong>{money(editTotal)}</strong></div></div>
-      <label className="form-field"><span>اسم المشتري</span><input value={editName} onChange={(event) => setEditName(event.target.value)} /></label><label className="form-field"><span>رقم الواتساب</span><input dir="ltr" type="tel" value={editPhone} onChange={(event) => setEditPhone(event.target.value)} /></label>
+      <label className="form-field"><span>اسم المشتري</span><input value={editName} onChange={(event) => setEditName(event.target.value)} /></label><label className="form-field"><span>رقم الواتساب</span><input dir="ltr" type="tel" value={editPhone} onChange={(event) => setEditPhone(event.target.value)} /></label><label className="form-field"><span>العنوان</span><input value={editAddress} onChange={(event) => setEditAddress(event.target.value)} placeholder="المدينة، المنطقة، أقرب نقطة دالة" /></label>
       {statsError && <div className="form-error"><AlertTriangle size={16} />{statsError}</div>}<button className="save-product-button" type="submit" disabled={savingEdit || !editLines.length}>{savingEdit ? "جارٍ الحفظ..." : "حفظ التعديل"}</button>
     </form></div>}
     {printSale && <DirectSaleReceipt sale={printSale} onClose={() => setPrintSale(null)} />}
