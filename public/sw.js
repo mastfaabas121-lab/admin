@@ -1,4 +1,5 @@
-const CACHE_NAME = "white-house-admin-v1";
+const VERSION = new URL(self.location.href).searchParams.get("v") || "1";
+const CACHE_NAME = `white-house-admin-${VERSION}`;
 const BASE_PATH = "/admin/";
 const CORE_ASSETS = [
   BASE_PATH,
@@ -11,6 +12,10 @@ const CORE_ASSETS = [
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)));
   self.skipWaiting();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {

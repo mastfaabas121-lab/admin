@@ -126,7 +126,7 @@ export function MoreScreen({ onNavigate }: Props) {
           >
             تسجيل خروج
           </button>
-          <p className="text-xs text-gray-400 font-semibold">إصدار التطبيق 1.0.0</p>
+          <p className="text-xs text-gray-400 font-semibold">إصدار التطبيق {__APP_VERSION__}</p>
         </div>
 
       </div>

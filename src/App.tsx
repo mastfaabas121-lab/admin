@@ -8,11 +8,37 @@ import { ConvexDataBridge } from './shared/convex/ConvexDataBridge';
 
 export default function App() {
   useEffect(() => {
-    // Remove the previous dashboard service worker so the restored interface
-    // is not replaced by stale cached files.
-    navigator.serviceWorker?.getRegistrations().then((registrations) => {
-      registrations.forEach((registration) => registration.unregister());
-    });
+    let updateTimer: number | undefined;
+    let reloadingForUpdate = false;
+    const reloadForUpdate = () => {
+      if (reloadingForUpdate) return;
+      reloadingForUpdate = true;
+      window.location.reload();
+    };
+
+    if ('serviceWorker' in navigator && import.meta.env.PROD) {
+      const baseUrl = import.meta.env.BASE_URL;
+      navigator.serviceWorker
+        .register(`${baseUrl}sw.js?v=${encodeURIComponent(__APP_VERSION__)}`, {
+          scope: baseUrl,
+          updateViaCache: 'none',
+        })
+        .then((registration) => {
+          const activateUpdate = () => registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+          activateUpdate();
+          registration.update();
+          registration.addEventListener('updatefound', () => {
+            const worker = registration.installing;
+            worker?.addEventListener('statechange', () => {
+              if (worker.state === 'installed') activateUpdate();
+            });
+          });
+          updateTimer = window.setInterval(() => registration.update(), 60_000);
+        })
+        .catch((error) => console.error('تعذر تشغيل التحديث التلقائي', error));
+
+      navigator.serviceWorker.addEventListener('controllerchange', reloadForUpdate);
+    }
 
     const isLocalDataCleaned = localStorage.getItem('LOCAL_DATA_CLEANUP_V2');
     if (!isLocalDataCleaned) {
@@ -40,6 +66,10 @@ export default function App() {
         document.documentElement.classList.remove('dark');
       }
     }
+    return () => {
+      if (updateTimer) window.clearInterval(updateTimer);
+      navigator.serviceWorker?.removeEventListener('controllerchange', reloadForUpdate);
+    };
   }, []);
 
   return <><ConvexDataBridge /><AppRouter /></>;
