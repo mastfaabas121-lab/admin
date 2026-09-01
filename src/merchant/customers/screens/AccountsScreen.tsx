@@ -3,7 +3,7 @@ import { Card } from "../../../shared/components/Card";
 import { formatCurrency } from "../../../data/mock/merchant/mockData";
 import { Search, ChevronLeft, Plus, X, Edit, Trash2, MoreVertical, AlertTriangle } from "lucide-react";
 import { cn } from "../../../shared/utils/utils";
-import { getCustomers, addCustomer, updateCustomer, canDeleteCustomer, deleteCustomer } from "../../debts/services/debtService";
+import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from "../../debts/services/debtService";
 import { Customer } from "../../../shared/models/types";
 
 interface AccountsScreenProps {
@@ -64,13 +64,10 @@ export function AccountsScreen({
 
   const handleDeleteClick = (e: React.MouseEvent, c: Customer) => {
     e.stopPropagation();
-    if (canDeleteCustomer(c.id)) {
-      setDeleteCustomerState(c);
-      setCannotDeleteMsg("");
-    } else {
-      setDeleteCustomerState(c);
-      setCannotDeleteMsg("هذا الزبون لديه معاملات مرتبطة. يجب معالجة حسابه أولًا قبل الحذف.");
-    }
+    setDeleteCustomerState(c);
+    setCannotDeleteMsg(c.balance > 0
+      ? "تنبيه: هذا الزبون عليه ديون. عند التأكيد سيُحذف الزبون وجميع ديونه ومعاملاته نهائياً."
+      : "");
   };
 
   const handleConfirmDelete = () => {
@@ -339,35 +336,22 @@ export function AccountsScreen({
             </div>
             <h2 className="text-xl font-bold mb-2">هل أنت متأكد؟</h2>
             
-            {cannotDeleteMsg ? (
-              <>
-                <p className="text-gray-500 text-sm mb-6">{cannotDeleteMsg}</p>
-                <button
-                  onClick={() => setDeleteCustomerState(null)}
-                  className="w-full bg-gray-100 text-gray-700 font-bold rounded-xl py-3"
-                >
-                  إغلاق
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-gray-500 text-sm mb-6">سيتم حذف الزبون ({deleteCustomerState.name}) نهائياً. لا يمكن التراجع عن هذا الإجراء.</p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setDeleteCustomerState(null)}
-                    className="flex-1 bg-gray-100 text-gray-700 font-bold rounded-xl py-3"
-                  >
-                    إلغاء
-                  </button>
-                  <button
-                    onClick={handleConfirmDelete}
-                    className="flex-1 bg-red-600 text-white font-bold rounded-xl py-3"
-                  >
-                    نعم، احذف
-                  </button>
-                </div>
-              </>
-            )}
+            {cannotDeleteMsg && <p className="text-red-600 text-sm font-bold mb-3">{cannotDeleteMsg}</p>}
+            <p className="text-gray-500 text-sm mb-6">سيتم حذف الزبون ({deleteCustomerState.name}) نهائياً. لا يمكن التراجع عن هذا الإجراء.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteCustomerState(null)}
+                className="flex-1 bg-gray-100 text-gray-700 font-bold rounded-xl py-3"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 bg-red-600 text-white font-bold rounded-xl py-3"
+              >
+                نعم، احذف
+              </button>
+            </div>
           </div>
         </div>
       )}

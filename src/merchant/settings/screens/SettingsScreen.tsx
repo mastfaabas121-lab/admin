@@ -7,7 +7,7 @@ interface SettingsScreenProps {
 }
 
 export function SettingsScreen({ onBack }: SettingsScreenProps) {
-  const [theme, setTheme] = useState('system');
+  const [theme, setTheme] = useState('dark');
   const [merchantName, setMerchantName] = useState('');
   const [storeName, setStoreName] = useState('');
   const [phone, setPhone] = useState('');
@@ -23,7 +23,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
 
   useEffect(() => {
     // Load theme
-    const savedTheme = localStorage.getItem('app_theme') || 'system';
+    const savedTheme = localStorage.getItem('app_theme') || 'dark';
     setTheme(savedTheme);
 
     // Load user data

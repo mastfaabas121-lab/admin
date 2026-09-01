@@ -54,28 +54,20 @@ export const updateCustomer = (id: string, name: string, phone: string) => {
 };
 
 export const canDeleteCustomer = (id: string): boolean => {
-  const customer = getCustomers().find(c => c.id === id);
-  if (!customer) return false;
-  if (customer.balance !== 0) return false;
-
-  const localDebts = localStorage.getItem('merchant_debts');
-  const allDebts: Record<string, Debt[]> = localDebts ? JSON.parse(localDebts) : {};
-  const cDebts = allDebts[id] || [];
-  if (cDebts.length > 0) return false;
-
-  const localPayments = localStorage.getItem('merchant_payments');
-  const allPayments: Record<string, Payment[]> = localPayments ? JSON.parse(localPayments) : {};
-  const cPayments = allPayments[id] || [];
-  if (cPayments.length > 0) return false;
-
-  return true;
+  return getCustomers().some(c => c.id === id);
 };
 
 export const deleteCustomer = (id: string): boolean => {
-  if (!canDeleteCustomer(id)) return false;
-  
   const customers = getCustomers();
+  if (!customers.some(c => c.id === id)) return false;
   const filtered = customers.filter(c => c.id !== id);
+
+  const allDebts: Record<string, Debt[]> = JSON.parse(localStorage.getItem('merchant_debts') || '{}');
+  const allPayments: Record<string, Payment[]> = JSON.parse(localStorage.getItem('merchant_payments') || '{}');
+  delete allDebts[id];
+  delete allPayments[id];
+  localStorage.setItem('merchant_debts', JSON.stringify(allDebts));
+  localStorage.setItem('merchant_payments', JSON.stringify(allPayments));
   saveCustomers(filtered);
   if (!id.startsWith('c_')) sync('customer.remove', { customerId: id });
   return true;

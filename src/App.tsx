@@ -14,15 +14,21 @@ export default function App() {
       registrations.forEach((registration) => registration.unregister());
     });
 
-    const isCleaned = localStorage.getItem('MIGRATION_CLEANUP_V1');
-    if (!isCleaned) {
-      localStorage.clear();
-      localStorage.setItem('MIGRATION_CLEANUP_V1', 'true');
+    const isLocalDataCleaned = localStorage.getItem('LOCAL_DATA_CLEANUP_V2');
+    if (!isLocalDataCleaned) {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('merchant_') || key.startsWith('mock_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      localStorage.setItem('LOCAL_DATA_CLEANUP_V2', 'true');
+      localStorage.setItem('app_theme', 'dark');
       window.location.reload();
+      return;
     }
 
     // Initialize theme
-    const theme = localStorage.getItem('app_theme') || 'system';
+    const theme = localStorage.getItem('app_theme') || 'dark';
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else if (theme === 'light') {
