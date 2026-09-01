@@ -13,7 +13,8 @@ export const getSales = (): Sale[] => {
 export const createSale = (
   saleType: 'CASH' | 'CREDIT',
   items: SaleItem[],
-  customerId?: string
+  customerId?: string,
+  cashCustomer?: { name?: string; phone?: string; address?: string },
 ) => {
   const products = getProducts();
 
@@ -59,7 +60,10 @@ export const createSale = (
     items: enrichedItems,
     subtotal: total,
     total: total,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    customerName: cashCustomer?.name?.trim() || undefined,
+    customerPhone: cashCustomer?.phone?.trim() || undefined,
+    customerAddress: cashCustomer?.address?.trim() || undefined,
   };
 
   const sales = getSales();
@@ -74,9 +78,9 @@ export const createSale = (
     } else if (saleType === 'CASH') {
       sync('sale.cash', {
         discount: 0,
-        customerName: 'بيع نقدي',
-        customerPhone: '0000000000',
-        customerAddress: '-',
+        customerName: cashCustomer?.name?.trim() || undefined,
+        customerPhone: cashCustomer?.phone?.trim() || undefined,
+        customerAddress: cashCustomer?.address?.trim() || undefined,
         items: convexItems,
       });
     }

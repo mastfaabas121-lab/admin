@@ -15,4 +15,7 @@ export interface Sale {
   subtotal: number;
   total: number;
   createdAt: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
 }

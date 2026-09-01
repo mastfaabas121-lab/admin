@@ -18,6 +18,10 @@ function NewSaleView({ onBack }: { onBack: () => void }) {
   const [saleType, setSaleType] = useState<'CASH' | 'CREDIT'>('CASH');
   const [customerId, setCustomerId] = useState('');
   const [error, setError] = useState('');
+  const [showCashCustomerForm, setShowCashCustomerForm] = useState(false);
+  const [cashCustomerName, setCashCustomerName] = useState('');
+  const [cashCustomerPhone, setCashCustomerPhone] = useState('');
+  const [cashCustomerAddress, setCashCustomerAddress] = useState('');
 
   useEffect(() => {
     setProducts(getProducts());
@@ -73,12 +77,33 @@ function NewSaleView({ onBack }: { onBack: () => void }) {
     setError('');
     if (cart.length === 0) return setError('السلة فارغة');
     if (saleType === 'CREDIT' && !customerId) return setError('اختر الزبون للبيع الآجل');
-    
+
+    if (saleType === 'CASH') {
+      setShowCashCustomerForm(true);
+      return;
+    }
+
     try {
       createSale(saleType, cart, customerId);
       onBack();
     } catch (e: any) {
       setError(e.message);
+    }
+  };
+
+  const completeCashSale = () => {
+    setError('');
+    try {
+      createSale('CASH', cart, undefined, {
+        name: cashCustomerName,
+        phone: cashCustomerPhone,
+        address: cashCustomerAddress,
+      });
+      setShowCashCustomerForm(false);
+      onBack();
+    } catch (e: any) {
+      setError(e.message);
+      setShowCashCustomerForm(false);
     }
   };
 
@@ -161,8 +186,8 @@ function NewSaleView({ onBack }: { onBack: () => void }) {
           </div>
           
           <div className="flex bg-gray-100 rounded-xl p-1">
-            <button onClick={() => setSaleType('CASH')} className={cn("flex-1 py-2.5 rounded-lg text-sm font-bold transition-all", saleType === 'CASH' ? "bg-white shadow-sm text-gray-900" : "text-gray-500")}>بيع نقدي</button>
-            <button onClick={() => setSaleType('CREDIT')} className={cn("flex-1 py-2.5 rounded-lg text-sm font-bold transition-all", saleType === 'CREDIT' ? "bg-white shadow-sm text-gray-900" : "text-gray-500")}>بيع آجل (دين)</button>
+            <button onClick={() => { setSaleType('CASH'); setShowCashCustomerForm(false); }} className={cn("flex-1 py-2.5 rounded-lg text-sm font-bold transition-all", saleType === 'CASH' ? "bg-white shadow-sm text-gray-900" : "text-gray-500")}>بيع نقدي</button>
+            <button onClick={() => { setSaleType('CREDIT'); setShowCashCustomerForm(false); }} className={cn("flex-1 py-2.5 rounded-lg text-sm font-bold transition-all", saleType === 'CREDIT' ? "bg-white shadow-sm text-gray-900" : "text-gray-500")}>بيع آجل (دين)</button>
           </div>
 
           {saleType === 'CREDIT' && (
@@ -176,10 +201,56 @@ function NewSaleView({ onBack }: { onBack: () => void }) {
           
           <button onClick={handleSubmit} disabled={cart.length === 0} className="w-full bg-indigo-600 disabled:bg-gray-300 disabled:scale-100 text-white font-bold rounded-xl p-4 active:scale-[0.98] transition-all shadow-md shadow-indigo-200 flex items-center justify-center gap-2">
             <Check size={20} />
-            تأكيد وإتمام البيع
+            إتمام عملية البيع
           </button>
         </div>
       </div>
+
+      {showCashCustomerForm && (
+        <div className="fixed inset-0 z-[70] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowCashCustomerForm(false)}>
+          <div className="bg-white w-full max-w-md rounded-2xl p-5 space-y-4" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">بيانات المشتري</h2>
+                <p className="text-xs text-gray-500 mt-1">جميع الحقول اختيارية</p>
+              </div>
+              <button onClick={() => setShowCashCustomerForm(false)} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center">
+                <Plus size={20} className="rotate-45" />
+              </button>
+            </div>
+
+            <input
+              value={cashCustomerName}
+              onChange={(event) => setCashCustomerName(event.target.value)}
+              placeholder="اسم المشتري (اختياري)"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+            <input
+              value={cashCustomerPhone}
+              onChange={(event) => setCashCustomerPhone(event.target.value)}
+              inputMode="tel"
+              placeholder="رقم الهاتف (اختياري)"
+              dir="ltr"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-200 text-left"
+            />
+            <input
+              value={cashCustomerAddress}
+              onChange={(event) => setCashCustomerAddress(event.target.value)}
+              placeholder="العنوان (اختياري)"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl p-3 outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+
+            <div className="bg-indigo-50 text-indigo-700 rounded-xl p-3 flex justify-between items-center font-bold">
+              <span>المبلغ الكلي</span>
+              <span>{formatCurrency(total)}</span>
+            </div>
+
+            <button onClick={completeCashSale} className="w-full bg-indigo-600 text-white font-bold rounded-xl p-4 active:scale-[0.98] transition-all">
+              تم البيع
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
