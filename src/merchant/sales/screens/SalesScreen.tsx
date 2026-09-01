@@ -24,7 +24,10 @@ function NewSaleView({ onBack }: { onBack: () => void }) {
     setCustomers(getCustomers());
   }, []);
 
-  const filteredProducts = products.filter(p => p.name.includes(search));
+  const normalizedSearch = search.trim();
+  const filteredProducts = normalizedSearch
+    ? products.filter(p => p.name.includes(normalizedSearch))
+    : [];
   const total = cart.reduce((sum, item) => sum + item.totalPrice, 0);
 
   const addToCart = (product: Product) => {
@@ -80,7 +83,7 @@ function NewSaleView({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col font-[Cairo]" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col overflow-y-auto sm:overflow-hidden font-[Cairo]" dir="rtl">
       <div className="bg-white px-5 pt-4 pb-3 shadow-sm border-b border-gray-100 flex items-center gap-3">
         <button onClick={onBack} className="p-2 -mr-2 bg-gray-50 rounded-full text-gray-600 hover:bg-gray-100 transition-colors">
           <ArrowRight size={20} />
@@ -103,8 +106,8 @@ function NewSaleView({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-        <div className="grid grid-cols-2 gap-3 pb-4">
+      <div className="flex-none max-h-[42vh] sm:max-h-none sm:flex-1 overflow-y-auto p-4 bg-gray-50">
+        <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-3 pb-4">
           {filteredProducts.map(p => (
             <div key={p.productId} onClick={() => addToCart(p)} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm cursor-pointer active:scale-95 transition-all flex flex-col justify-between h-28">
               <div>
@@ -119,13 +122,16 @@ function NewSaleView({ onBack }: { onBack: () => void }) {
               </div>
             </div>
           ))}
-          {filteredProducts.length === 0 && (
-            <div className="col-span-2 text-center py-10 text-gray-400 text-sm">لا توجد منتجات مطابقة</div>
+          {!normalizedSearch && (
+            <div className="col-span-full text-center py-10 text-gray-400 text-sm">اكتب اسم المادة في حقل البحث لإظهار المنتجات</div>
+          )}
+          {normalizedSearch && filteredProducts.length === 0 && (
+            <div className="col-span-full text-center py-10 text-gray-400 text-sm">لا توجد منتجات مطابقة</div>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.08)] border-t border-gray-100 flex flex-col max-h-[55vh] shrink-0">
+      <div className="bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.08)] border-t border-gray-100 flex flex-col max-h-none sm:max-h-[55vh] shrink-0">
         <div className="p-4 border-b border-gray-100 overflow-y-auto max-h-[30vh]">
           <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
             <ShoppingCart size={16} /> السلة ({cart.length})
