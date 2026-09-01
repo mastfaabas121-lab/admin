@@ -1,5 +1,5 @@
-const VERSION = new URL(self.location.href).searchParams.get("v") || "1";
-const CACHE_NAME = `white-house-admin-${VERSION}`;
+const RELEASE_VERSION = "__APP_RELEASE_VERSION__";
+const CACHE_NAME = `white-house-admin-${RELEASE_VERSION}`;
 const BASE_PATH = "/admin/";
 const CORE_ASSETS = [
   BASE_PATH,
