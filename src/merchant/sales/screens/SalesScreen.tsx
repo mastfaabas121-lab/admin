@@ -182,6 +182,7 @@ export function SalesScreen() {
   const [view, setView] = useState<'LIST'|'NEW'>('LIST');
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [deleteSaleState, setDeleteSaleState] = useState<Sale | null>(null);
 
   useEffect(() => {
     if (view === 'LIST') {
@@ -197,8 +198,6 @@ export function SalesScreen() {
   const todayStr = new Date().toISOString().split('T')[0];
   const todaySales = sales.filter(s => s.createdAt.startsWith(todayStr));
   const todayTotal = todaySales.reduce((sum, s) => sum + s.total, 0);
-
-  const [deleteSaleState, setDeleteSaleState] = useState<Sale | null>(null);
 
   const handleDeleteClick = (e: React.MouseEvent, sale: Sale) => {
     e.stopPropagation();
