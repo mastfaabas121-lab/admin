@@ -291,7 +291,7 @@ export function MerchantNavigator() {
 
   return (
     <div
-      className="min-h-screen w-full bg-gray-50 flex flex-col font-[Cairo] text-gray-900 mx-auto max-w-md md:max-w-4xl relative shadow-2xl overflow-hidden"
+      className="min-h-screen w-full bg-gray-50 flex flex-col font-[Cairo] text-gray-900 mx-auto max-w-md min-[600px]:max-w-4xl relative shadow-2xl overflow-hidden"
       dir="rtl"
     >
       {/* Main Content Area */}

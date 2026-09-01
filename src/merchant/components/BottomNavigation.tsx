@@ -21,7 +21,7 @@ export function BottomNavigation({ currentTab, onChangeTab, onAddClick }: Bottom
     <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none flex justify-center pb-6 px-4">
       
       {/* Container for floating nav and FAB */}
-      <div className="relative w-full max-w-md md:max-w-4xl">
+      <div className="relative w-full max-w-md min-[600px]:max-w-4xl">
         
         {/* Floating Action Button (FAB) */}
         <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
@@ -34,10 +34,10 @@ export function BottomNavigation({ currentTab, onChangeTab, onAddClick }: Bottom
         </div>
 
         {/* Floating Glassmorphic Pill */}
-        <div className="bg-white/95 backdrop-blur-xl border border-white/60 shadow-[0_12px_40px_rgba(0,0,0,0.1)] rounded-[2rem] w-full p-2 flex items-center justify-between pointer-events-auto relative z-30">
+        <div className="bg-white/95 backdrop-blur-xl border border-white/60 shadow-[0_12px_40px_rgba(0,0,0,0.1)] rounded-[2rem] w-full p-2 grid grid-cols-5 items-center pointer-events-auto relative z-30">
           {tabs.map((tab) => {
             if (tab.id === 'placeholder') {
-              return <div key={tab.id} className="w-[18%]" />; // Space for FAB
+              return <div key={tab.id} className="w-full" />; // Space for FAB
             }
             const Icon = tab.icon!;
             const isActive = currentTab === tab.id;
@@ -46,7 +46,7 @@ export function BottomNavigation({ currentTab, onChangeTab, onAddClick }: Bottom
                 key={tab.id}
                 onClick={() => onChangeTab(tab.id)}
                 className={cn(
-                  "relative flex flex-col items-center justify-center w-[18%] py-2 transition-all duration-300 rounded-2xl",
+                  "relative flex flex-col items-center justify-center w-full py-2 transition-all duration-300 rounded-2xl",
                   isActive ? "text-indigo-600 bg-indigo-50/50" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50/50"
                 )}
               >
