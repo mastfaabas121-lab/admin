@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { TopBar } from "../../merchant/components/TopBar";
 import { BottomNavigation } from "../../merchant/components/BottomNavigation";
 import { BottomSheet } from "../../merchant/components/BottomSheet";
@@ -15,21 +15,10 @@ import { SuppliersListScreen } from "../../merchant/suppliers/screens/SuppliersL
 import { ExpensesScreen } from "../../merchant/expenses/screens/ExpensesScreen";
 import { PlaceholderScreen } from "../../shared/components/PlaceholderScreen";
 import { OverdueScreen } from "../../merchant/overdue/screens/OverdueScreen";
-import {
-  getSubscriptionData,
-  SubscriptionData,
-} from "../../shared/subscription/services/subscriptionService";
-import { AlertCircle, Lock } from "lucide-react";
 
 export function MerchantNavigator() {
   const [currentTab, setCurrentTab] = useState("home");
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
-  const [subData, setSubData] = useState<SubscriptionData | null>(null);
-
-  useEffect(() => {
-    setSubData(getSubscriptionData());
-  }, [currentTab]); // re-check when changing tabs
-
   // Simple nested routing state for accounts
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
     null,
@@ -302,30 +291,11 @@ export function MerchantNavigator() {
 
   return (
     <div
-      className="min-h-screen bg-gray-50 flex flex-col font-[Cairo] text-gray-900 mx-auto max-w-md relative shadow-2xl overflow-hidden"
+      className="min-h-screen w-full bg-gray-50 flex flex-col font-[Cairo] text-gray-900 mx-auto max-w-md md:max-w-4xl relative shadow-2xl overflow-hidden"
       dir="rtl"
     >
-      {subData?.subscriptionStatus === "EXPIRED" && (
-        <div className="bg-red-600 text-white p-3 flex items-start gap-3 relative z-50">
-          <Lock size={20} className="shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <h4 className="font-bold text-sm">انتهت الفترة التجريبية</h4>
-            <p className="text-xs opacity-90 mt-1">
-              انتهى اشتراكك. يمكنك الإطلاع على بياناتك السابقة فقط. يرجى تفعيل
-              الاشتراك للاستمرار باستخدام كافة الميزات.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Main Content Area */}
-      <div
-        className={
-          subData?.subscriptionStatus === "EXPIRED" && currentTab !== "more"
-            ? "flex-1 overflow-hidden relative pointer-events-none opacity-80"
-            : "flex-1 overflow-hidden relative"
-        }
-      >
+      <div className="flex-1 overflow-hidden relative">
         {renderScreen()}
       </div>
 

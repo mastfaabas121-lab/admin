@@ -21,7 +21,7 @@ export function BottomNavigation({ currentTab, onChangeTab, onAddClick }: Bottom
     <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none flex justify-center pb-6 px-4">
       
       {/* Container for floating nav and FAB */}
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full max-w-md md:max-w-4xl">
         
         {/* Floating Action Button (FAB) */}
         <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">

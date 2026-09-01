@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: "/admin/",
   define: {
-    __APP_VERSION__: JSON.stringify(packageJson.version),
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(packageJson.version),
   },
   resolve: {
     alias: {

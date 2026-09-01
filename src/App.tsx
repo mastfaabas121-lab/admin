@@ -19,7 +19,7 @@ export default function App() {
     if ('serviceWorker' in navigator && import.meta.env.PROD) {
       const baseUrl = import.meta.env.BASE_URL;
       navigator.serviceWorker
-        .register(`${baseUrl}sw.js?v=${encodeURIComponent(__APP_VERSION__)}`, {
+        .register(`${baseUrl}sw.js?v=${encodeURIComponent(import.meta.env.VITE_APP_VERSION)}`, {
           scope: baseUrl,
           updateViaCache: 'none',
         })

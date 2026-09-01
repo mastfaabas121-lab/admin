@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, Moon, Sun, Monitor, User, Store, Shield, Download, Upload, LogOut, Check, AlertCircle } from 'lucide-react';
+import { ChevronRight, Moon, Sun, Monitor, User, Store, Shield, Download, Upload, LogOut, Check, AlertCircle, Info } from 'lucide-react';
 import { clearMerchantSession } from '../../../shared/storage/session';
 
 interface SettingsScreenProps {
@@ -260,6 +260,19 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             </div>
             {restoreError && <p className="text-red-500 text-xs font-bold flex items-center gap-1"><AlertCircle size={14}/> {restoreError}</p>}
             {restoreSuccess && <p className="text-green-600 text-xs font-bold flex items-center gap-1"><Check size={14}/> {restoreSuccess}</p>}
+          </div>
+        </section>
+
+        {/* App Info */}
+        <section className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+              <Info size={18} />
+              <span className="text-sm font-bold">إصدار التطبيق الحالي</span>
+            </div>
+            <span dir="ltr" className="rounded-lg bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 text-sm font-bold text-indigo-600 dark:text-indigo-400">
+              v{import.meta.env.VITE_APP_VERSION}
+            </span>
           </div>
         </section>
 
