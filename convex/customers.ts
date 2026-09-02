@@ -19,32 +19,6 @@ export const list = query({
   },
 });
 
-export const findByPhone = query({
-  args: { phone: v.string() },
-  handler: async (ctx, args) => {
-    const normalize = (value: string) => value.replace(/[^0-9]/g, "");
-    const requestedPhone = normalize(args.phone);
-    if (!requestedPhone) return null;
-    const customers = await ctx.db.query("customers").collect();
-    const customer = customers.find(
-      (item) => item.active && normalize(item.phone) === requestedPhone,
-    );
-    return customer ?? null;
-  },
-});
-
-export const allAccounts = query({
-  args: {},
-  handler: async (ctx) => {
-    const customers = (await ctx.db.query("customers").collect()).filter((customer) => customer.active);
-    return Promise.all(customers.map(async (customer) => {
-      const debts = await ctx.db.query("debts").withIndex("by_customer", (q) => q.eq("customerId", customer._id)).collect();
-      const payments = await ctx.db.query("payments").withIndex("by_customer", (q) => q.eq("customerId", customer._id)).collect();
-      return { customer, debts, payments };
-    }));
-  },
-});
-
 export const account = query({
   args: { customerId: v.id("customers") },
   handler: async (ctx, args) => {

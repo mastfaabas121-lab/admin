@@ -4,17 +4,16 @@ import { v } from "convex/values";
 export const createCashSale = mutation({
   args: {
     discount: v.number(),
-    customerName: v.optional(v.string()),
-    customerPhone: v.optional(v.string()),
-    customerAddress: v.optional(v.string()),
+    customerName: v.string(),
+    customerPhone: v.string(),
+    customerAddress: v.string(),
     items: v.array(v.object({ productId: v.id("products"), quantity: v.number() })),
   },
   handler: async (ctx, args) => {
     if (!args.items.length) throw new Error("الفاتورة فارغة");
-    const customerName = args.customerName?.trim() || undefined;
-    const customerPhone = args.customerPhone?.trim() || undefined;
-    const customerAddress = args.customerAddress?.trim() || undefined;
-    if (customerPhone && customerPhone.replace(/\D/g, "").length < 10) throw new Error("رقم الواتساب غير صحيح");
+    if (!args.customerName.trim()) throw new Error("اسم المشتري مطلوب");
+    if (args.customerPhone.replace(/\D/g, "").length < 10) throw new Error("رقم الواتساب غير صحيح");
+    if (!args.customerAddress.trim()) throw new Error("عنوان المشتري مطلوب");
     let subtotal = 0;
     const resolved = [];
     for (const item of args.items) {
@@ -25,7 +24,7 @@ export const createCashSale = mutation({
       resolved.push({ product, quantity: item.quantity });
     }
     const total = Math.max(0, subtotal - args.discount);
-    const saleId = await ctx.db.insert("sales", { customerName, customerPhone, customerAddress, kind: "cash", subtotal, discount: args.discount, total, paidAmount: total, remainingAmount: 0, createdAt: Date.now() });
+    const saleId = await ctx.db.insert("sales", { customerName: args.customerName.trim(), customerPhone: args.customerPhone.trim(), customerAddress: args.customerAddress.trim(), kind: "cash", subtotal, discount: args.discount, total, paidAmount: total, remainingAmount: 0, createdAt: Date.now() });
     for (const { product, quantity } of resolved) {
       await ctx.db.insert("saleItems", { saleId, productId: product._id, productName: product.name, quantity, unitPrice: product.salePrice, total: product.salePrice * quantity });
       await ctx.db.patch(product._id, { stock: product.stock - quantity });

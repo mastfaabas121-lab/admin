@@ -1,5 +1,4 @@
-const RELEASE_VERSION = "__APP_RELEASE_VERSION__";
-const CACHE_NAME = `white-house-admin-${RELEASE_VERSION}`;
+const CACHE_NAME = "white-house-admin-v1";
 const BASE_PATH = "/admin/";
 const CORE_ASSETS = [
   BASE_PATH,
@@ -11,10 +10,7 @@ const CORE_ASSETS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)));
-});
-
-self.addEventListener("message", (event) => {
-  if (event.data?.type === "ACTIVATE_UPDATE") self.skipWaiting();
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
